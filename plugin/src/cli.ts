@@ -95,12 +95,18 @@ export function registerTestCli(params: {
 
         const plugins = (cfg.plugins ?? {}) as Record<string, unknown>;
         const entries = (plugins.entries ?? {}) as Record<string, unknown>;
-        const currentTest = (entries.test ?? {}) as Record<string, unknown>;
+        const currentTest = (entries["vimalinx-server-plugin"] ?? {}) as Record<string, unknown>;
 
         await runtime.config.writeConfigFile({
           ...cfg,
           channels: { ...channels, test: nextTest },
-          plugins: { ...plugins, entries: { ...entries, test: { ...currentTest, enabled: true } } },
+          plugins: {
+            ...plugins,
+            entries: {
+              ...entries,
+              "vimalinx-server-plugin": { ...currentTest, enabled: true },
+            },
+          },
         });
 
         logger.info?.(`Registered "${data.userId}" and updated config.`);
