@@ -38,6 +38,21 @@ clawdbot plugins install ./plugin
 clawdbot onboard
 ```
 
+## 插件离线发布（给客户）
+
+打包离线安装包：
+
+```bash
+./plugin/scripts/pack-release.sh
+```
+
+客户安装：
+
+```bash
+tar -xzf vimalinx-server-plugin-*.tgz
+./package/scripts/install.sh
+```
+
 验证：
 
 ```bash
