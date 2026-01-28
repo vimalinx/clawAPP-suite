@@ -33,7 +33,7 @@ clawdbot plugins install -l ./plugin
 If the plugin shows as disabled:
 
 ```bash
-clawdbot plugins enable test
+clawdbot plugins enable vimalinx-server-plugin
 ```
 
 ## Configure (wizard)

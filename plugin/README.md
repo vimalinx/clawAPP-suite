@@ -32,7 +32,7 @@ clawdbot plugins install -l ./plugin
 如果插件显示为禁用：
 
 ```bash
-clawdbot plugins enable test
+clawdbot plugins enable vimalinx-server-plugin
 ```
 
 ## 配置（向导）

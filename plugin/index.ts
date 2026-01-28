@@ -7,7 +7,7 @@ import { handleTestWebhookRequest } from "./src/monitor.js";
 import { setTestRuntime } from "./src/runtime.js";
 
 const plugin = {
-  id: "test",
+  id: "vimalinx-server-plugin",
   name: "Vimalinx Server",
   description: "Vimalinx Server channel plugin",
   configSchema: emptyPluginConfigSchema(),
