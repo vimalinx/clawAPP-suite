@@ -32,15 +32,23 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChatBubble
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -148,6 +156,10 @@ fun TestChatApp(viewModel: TestChatViewModel) {
                 onOpenChat = viewModel::openChat,
                 onNewChat = viewModel::createThread,
                 onGenerateHost = viewModel::generateHostToken,
+                onRenameThread = viewModel::renameThread,
+                onTogglePinThread = viewModel::togglePinThread,
+                onToggleArchiveThread = viewModel::toggleArchiveThread,
+                onDeleteThread = viewModel::deleteThread,
                 onLogout = viewModel::logout,
               )
             }
@@ -387,6 +399,10 @@ private fun ChatListScreen(
   onOpenChat: (String) -> Unit,
   onNewChat: (String, String, String) -> Unit,
   onGenerateHost: (String, (String, String) -> Unit) -> Unit,
+  onRenameThread: (String, String) -> Unit,
+  onTogglePinThread: (String) -> Unit,
+  onToggleArchiveThread: (String) -> Unit,
+  onDeleteThread: (String) -> Unit,
   onLogout: () -> Unit,
 ) {
   var showNewChat by remember { mutableStateOf(false) }
@@ -397,6 +413,14 @@ private fun ChatListScreen(
   var newHostLabel by rememberSaveable { mutableStateOf("") }
   var generatedHost by remember { mutableStateOf<Pair<String, String>?>(null) }
   var searchQuery by rememberSaveable { mutableStateOf("") }
+  var renameTarget by remember { mutableStateOf<TestChatThread?>(null) }
+  var renameValue by rememberSaveable { mutableStateOf("") }
+  var deleteTarget by remember { mutableStateOf<TestChatThread?>(null) }
+  var showArchived by rememberSaveable { mutableStateOf(false) }
+
+  LaunchedEffect(renameTarget?.chatId) {
+    renameValue = renameTarget?.let { resolveSessionLabel(it) }.orEmpty()
+  }
 
   Scaffold(
     topBar = {
@@ -476,15 +500,122 @@ private fun ChatListScreen(
             title.contains(query) || machine.contains(query) || session.contains(query)
           }
         }
+      val activeThreads = filteredThreads.filterNot { it.isArchived }
+      val archivedThreads = filteredThreads.filter { it.isArchived }
+      val sortedActiveThreads =
+        activeThreads.sortedWith(
+          compareByDescending<TestChatThread> { it.isPinned }
+            .thenByDescending { it.lastTimestampMs },
+        )
+      val sortedArchivedThreads =
+        archivedThreads.sortedWith(
+          compareByDescending<TestChatThread> { it.isPinned }
+            .thenByDescending { it.lastTimestampMs },
+        )
       LazyColumn(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxSize(),
       ) {
-        items(filteredThreads) { thread ->
-          ChatThreadRow(thread = thread, onClick = { onOpenChat(thread.chatId) })
+        items(sortedActiveThreads) { thread ->
+          ChatThreadRow(
+            thread = thread,
+            onClick = { onOpenChat(thread.chatId) },
+            onRename = { renameTarget = thread },
+            onTogglePinned = { onTogglePinThread(thread.chatId) },
+            onToggleArchived = { onToggleArchiveThread(thread.chatId) },
+            onDelete = { deleteTarget = thread },
+          )
+        }
+        if (sortedArchivedThreads.isNotEmpty()) {
+          item {
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.Center,
+            ) {
+              TextButton(onClick = { showArchived = !showArchived }) {
+                Text(
+                  text =
+                    if (showArchived) {
+                      "Hide archived (${sortedArchivedThreads.size})"
+                    } else {
+                      "Show archived (${sortedArchivedThreads.size})"
+                    },
+                )
+              }
+            }
+          }
+          if (showArchived) {
+            items(sortedArchivedThreads) { thread ->
+              ChatThreadRow(
+                thread = thread,
+                onClick = { onOpenChat(thread.chatId) },
+                onRename = { renameTarget = thread },
+                onTogglePinned = { onTogglePinThread(thread.chatId) },
+                onToggleArchived = { onToggleArchiveThread(thread.chatId) },
+                onDelete = { deleteTarget = thread },
+              )
+            }
+          }
         }
       }
     }
+  }
+
+  if (renameTarget != null) {
+    val target = renameTarget
+    AlertDialog(
+      onDismissRequest = { renameTarget = null },
+      title = { Text("Rename session") },
+      text = {
+        TextField(
+          value = renameValue,
+          onValueChange = { renameValue = it },
+          label = { Text("Session name") },
+          singleLine = true,
+          colors = textFieldColors(),
+        )
+      },
+      confirmButton = {
+        TextButton(
+          onClick = {
+            if (target != null) {
+              onRenameThread(target.chatId, renameValue)
+            }
+            renameTarget = null
+          },
+          enabled = renameValue.isNotBlank(),
+        ) {
+          Text("Save")
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { renameTarget = null }) { Text("Cancel") }
+      },
+    )
+  }
+
+  if (deleteTarget != null) {
+    val target = deleteTarget
+    AlertDialog(
+      onDismissRequest = { deleteTarget = null },
+      title = { Text("Delete session?") },
+      text = { Text("This removes the session and its local messages.") },
+      confirmButton = {
+        TextButton(
+          onClick = {
+            if (target != null) {
+              onDeleteThread(target.chatId)
+            }
+            deleteTarget = null
+          },
+        ) {
+          Text("Delete")
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { deleteTarget = null }) { Text("Cancel") }
+      },
+    )
   }
 
   if (showNewChat) {
@@ -1110,11 +1241,19 @@ private fun HostPicker(
 }
 
 @Composable
-private fun ChatThreadRow(thread: TestChatThread, onClick: () -> Unit) {
+private fun ChatThreadRow(
+  thread: TestChatThread,
+  onClick: () -> Unit,
+  onRename: () -> Unit,
+  onTogglePinned: () -> Unit,
+  onToggleArchived: () -> Unit,
+  onDelete: () -> Unit,
+) {
   val identity = parseChatIdentity(thread.chatId)
   val sessionLabel = resolveSessionLabel(thread)
   val machineLabel = identity.machine
   val machineColor = resolveMachineColor(machineLabel)
+  var menuExpanded by remember { mutableStateOf(false) }
   Card(
     shape = RoundedCornerShape(18.dp),
     colors =
@@ -1138,6 +1277,15 @@ private fun ChatThreadRow(thread: TestChatThread, onClick: () -> Unit) {
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
           )
+          if (thread.isPinned) {
+            Icon(
+              imageVector = Icons.Default.PushPin,
+              contentDescription = "Pinned",
+              tint = MaterialTheme.colorScheme.primary,
+              modifier = Modifier.size(16.dp),
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+          }
           Text(
             text = formatTime(thread.lastTimestampMs),
             style = MaterialTheme.typography.labelSmall,
@@ -1159,6 +1307,54 @@ private fun ChatThreadRow(thread: TestChatThread, onClick: () -> Unit) {
           if (thread.unreadCount > 0) {
             UnreadBadge(count = thread.unreadCount)
           }
+        }
+      }
+      Box {
+        IconButton(onClick = { menuExpanded = true }) {
+          Icon(imageVector = Icons.Default.MoreVert, contentDescription = "More")
+        }
+        DropdownMenu(
+          expanded = menuExpanded,
+          onDismissRequest = { menuExpanded = false },
+        ) {
+          DropdownMenuItem(
+            text = { Text("Rename") },
+            onClick = {
+              menuExpanded = false
+              onRename()
+            },
+            leadingIcon = { Icon(imageVector = Icons.Default.Edit, contentDescription = null) },
+          )
+          DropdownMenuItem(
+            text = { Text(if (thread.isPinned) "Unpin" else "Pin") },
+            onClick = {
+              menuExpanded = false
+              onTogglePinned()
+            },
+            leadingIcon = { Icon(imageVector = Icons.Default.PushPin, contentDescription = null) },
+          )
+          DropdownMenuItem(
+            text = { Text(if (thread.isArchived) "Unarchive" else "Archive") },
+            onClick = {
+              menuExpanded = false
+              onToggleArchived()
+            },
+            leadingIcon = {
+              Icon(
+                imageVector =
+                  if (thread.isArchived) Icons.Default.Unarchive else Icons.Default.Archive,
+                contentDescription = null,
+              )
+            },
+          )
+          DropdownMenuItem(
+            text = { Text("Delete") },
+            onClick = {
+              menuExpanded = false
+              onDelete()
+            },
+            leadingIcon = { Icon(imageVector = Icons.Default.Delete, contentDescription = null) },
+          )
         }
       }
     }

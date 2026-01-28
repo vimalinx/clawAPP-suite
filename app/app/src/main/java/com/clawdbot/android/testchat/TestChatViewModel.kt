@@ -314,6 +314,53 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
     _activeChatId.value = null
   }
 
+  fun renameThread(chatId: String, title: String) {
+    val trimmed = title.trim()
+    if (trimmed.isBlank()) return
+    updateSnapshot { snapshot ->
+      val updated =
+        snapshot.threads.map { thread ->
+          if (thread.chatId == chatId) thread.copy(title = trimmed) else thread
+        }
+      snapshot.copy(threads = updated)
+    }
+  }
+
+  fun togglePinThread(chatId: String) {
+    updateSnapshot { snapshot ->
+      val updated =
+        snapshot.threads.map { thread ->
+          if (thread.chatId == chatId) thread.copy(isPinned = !thread.isPinned) else thread
+        }
+      snapshot.copy(threads = updated)
+    }
+  }
+
+  fun toggleArchiveThread(chatId: String) {
+    updateSnapshot { snapshot ->
+      val updated =
+        snapshot.threads.map { thread ->
+          if (thread.chatId == chatId) {
+            thread.copy(isArchived = !thread.isArchived)
+          } else {
+            thread
+          }
+        }
+      snapshot.copy(threads = updated)
+    }
+  }
+
+  fun deleteThread(chatId: String) {
+    if (_activeChatId.value == chatId) {
+      _activeChatId.value = null
+    }
+    updateSnapshot { snapshot ->
+      val filteredThreads = snapshot.threads.filterNot { it.chatId == chatId }
+      val filteredMessages = snapshot.messages.filterNot { it.chatId == chatId }
+      snapshot.copy(threads = filteredThreads, messages = filteredMessages)
+    }
+  }
+
   fun createThread(title: String, hostLabel: String, sessionName: String) {
     val normalizedHost = normalizeHostLabel(hostLabel)
     val session = sessionName.trim().ifBlank { "main" }
