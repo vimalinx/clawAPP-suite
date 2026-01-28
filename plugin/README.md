@@ -17,6 +17,12 @@
 clawdbot plugins install ./plugin
 ```
 
+一键安装脚本（推荐）：
+
+```bash
+./plugin/scripts/install.sh
+```
+
 开发模式（不复制、软链接）：
 
 ```bash

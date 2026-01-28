@@ -18,6 +18,12 @@ From a local checkout:
 clawdbot plugins install ./plugin
 ```
 
+One-click install script (recommended):
+
+```bash
+./plugin/scripts/install.sh
+```
+
 For dev (no copy, live link):
 
 ```bash
