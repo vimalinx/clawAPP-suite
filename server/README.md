@@ -36,6 +36,24 @@ node server/server.mjs
 - `TEST_REQUIRE_SIGNATURE`（当 secret 存在时默认 true）
 - `TEST_SIGNATURE_TTL_MS`（签名时间窗，默认 `300000`）
 
+## 邀请码模式
+
+可选发码或不发码：
+
+- 不发邀请码：不设置 `TEST_INVITE_CODES`（或设置为空），并确保
+  `TEST_ALLOW_REGISTRATION=true`。
+- 需要邀请码：设置 `TEST_INVITE_CODES`，示例：
+
+```bash
+export TEST_INVITE_CODES="vimalinx-xxxxxxx1,vimalinx-xxxxxxx2"
+```
+
+如果要完全关闭注册：
+
+```bash
+export TEST_ALLOW_REGISTRATION=false
+```
+
 ## Webhook 模式
 
 ```bash

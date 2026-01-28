@@ -36,6 +36,24 @@ Set environment variables:
 - `TEST_REQUIRE_SIGNATURE` (`true` or `false`, default `true` when secret is set)
 - `TEST_SIGNATURE_TTL_MS` (signature timestamp window, default `300000`)
 
+## Invite code modes
+
+You can run with or without invite codes:
+
+- No invite codes: leave `TEST_INVITE_CODES` unset (or empty) and keep
+  `TEST_ALLOW_REGISTRATION=true`.
+- With invite codes: set `TEST_INVITE_CODES`, for example:
+
+```bash
+export TEST_INVITE_CODES="vimalinx-xxxxxxx1,vimalinx-xxxxxxx2"
+```
+
+To disable registration entirely:
+
+```bash
+export TEST_ALLOW_REGISTRATION=false
+```
+
 ## Webhook mode
 
 Set the inbound mode to webhook and point the server at the Gateway webhook URL:
