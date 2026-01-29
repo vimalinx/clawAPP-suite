@@ -43,7 +43,7 @@ export type TestAccountConfig = {
 
 export type TestConfig = {
   channels?: {
-    test?: TestAccountConfig & {
+    vimalinx?: TestAccountConfig & {
       accounts?: Record<string, TestAccountConfig>;
     };
   };
