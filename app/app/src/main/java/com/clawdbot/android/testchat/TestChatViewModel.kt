@@ -28,6 +28,9 @@ data class TestChatUiState(
   val isAuthenticated: Boolean = false,
   val connectionState: TestChatConnectionState = TestChatConnectionState.Disconnected,
   val errorText: String? = null,
+  val serverTestMessage: String? = null,
+  val serverTestSuccess: Boolean? = null,
+  val serverTestInProgress: Boolean = false,
   val threads: List<TestChatThread> = emptyList(),
   val activeChatId: String? = null,
   val messages: List<TestChatMessage> = emptyList(),
@@ -62,6 +65,9 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
   private val _activeChatId = MutableStateFlow<String?>(null)
   private val _isInForeground = MutableStateFlow(true)
   private val _tokenUsage = MutableStateFlow<Map<String, TestChatTokenUsage>>(emptyMap())
+  private val _serverTestMessage = MutableStateFlow<String?>(null)
+  private val _serverTestSuccess = MutableStateFlow<Boolean?>(null)
+  private val _serverTestInProgress = MutableStateFlow(false)
 
   private val hostStates = mutableMapOf<String, TestChatConnectionState>()
   private val hostStreams = mutableMapOf<String, HostStreamState>()
@@ -84,7 +90,13 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
     }
 
   val uiState: StateFlow<TestChatUiState> =
-    combine(baseUiState, _tokenUsage) { base, tokenUsage ->
+    combine(
+      baseUiState,
+      _tokenUsage,
+      _serverTestMessage,
+      _serverTestSuccess,
+      _serverTestInProgress,
+    ) { base, tokenUsage, serverTestMessage, serverTestSuccess, serverTestInProgress ->
       val (account, hosts, password) = base.auth
       val sortedThreads =
         base.snapshot.threads.sortedByDescending { thread -> thread.lastTimestampMs }
@@ -104,6 +116,9 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
         isAuthenticated = isAuthenticated,
         connectionState = base.connectionState,
         errorText = base.errorText,
+        serverTestMessage = serverTestMessage,
+        serverTestSuccess = serverTestSuccess,
+        serverTestInProgress = serverTestInProgress,
         threads = sortedThreads,
         activeChatId = base.activeChatId,
         messages = messages,
@@ -289,6 +304,44 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
     if (_disclaimerAccepted.value) return
     prefs.saveDisclaimerAccepted()
     _disclaimerAccepted.value = true
+  }
+
+  fun testServerConnection(serverUrl: String) {
+    val normalizedServer = client.normalizeBaseUrl(serverUrl)
+    if (normalizedServer.isBlank()) {
+      _serverTestMessage.value = appString(R.string.error_server_url_required)
+      _serverTestSuccess.value = false
+      return
+    }
+    _serverTestInProgress.value = true
+    _serverTestMessage.value = null
+    _serverTestSuccess.value = null
+    viewModelScope.launch {
+      val response =
+        runCatching { client.checkHealth(normalizedServer) }
+          .getOrElse {
+            _serverTestMessage.value =
+              appString(R.string.msg_server_test_failed_detail, it.message ?: "")
+            _serverTestSuccess.value = false
+            _serverTestInProgress.value = false
+            return@launch
+          }
+      if (response.ok == true) {
+        _serverTestMessage.value = appString(R.string.msg_server_test_success)
+        _serverTestSuccess.value = true
+      } else {
+        _serverTestMessage.value =
+          response.error ?: appString(R.string.msg_server_test_failed)
+        _serverTestSuccess.value = false
+      }
+      _serverTestInProgress.value = false
+    }
+  }
+
+  fun clearServerTestStatus() {
+    _serverTestMessage.value = null
+    _serverTestSuccess.value = null
+    _serverTestInProgress.value = false
   }
 
   private suspend fun verifyAccountLogin(account: TestChatAccount, password: String): Boolean {
@@ -839,7 +892,7 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
     if (trimmed.startsWith("machine:") || trimmed.startsWith("device:")) return trimmed
     if (trimmed.contains("/") || trimmed.contains("|")) return trimmed
     if (normalizedHost == "default") return trimmed
-    if (trimmed.startsWith("user:") || trimmed.startsWith("test:")) {
+    if (trimmed.startsWith("user:") || trimmed.startsWith("vimalinx:")) {
       val session = trimmed.substringAfter(":").ifBlank { "main" }
       return "machine:${normalizedHost}/${session}"
     }

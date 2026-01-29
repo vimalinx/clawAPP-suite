@@ -130,6 +130,9 @@ fun TestChatApp(viewModel: TestChatViewModel) {
     if (!state.isAuthenticated) {
       AccountScreen(
         errorText = state.errorText,
+        serverTestMessage = state.serverTestMessage,
+        serverTestSuccess = state.serverTestSuccess,
+        serverTestInProgress = state.serverTestInProgress,
         initialUserId = state.account?.userId,
         initialServerUrl = state.account?.serverUrl,
         onRegister = { serverUrl, userId, inviteCode, password ->
@@ -138,6 +141,8 @@ fun TestChatApp(viewModel: TestChatViewModel) {
           }
         },
         onLogin = viewModel::loginAccount,
+        onTestServer = viewModel::testServerConnection,
+        onClearServerTest = viewModel::clearServerTestStatus,
       )
     } else if (state.activeChatId != null) {
       ChatScreen(
@@ -230,14 +235,19 @@ private enum class MainTab {
 @Composable
 private fun AccountScreen(
   errorText: String?,
+  serverTestMessage: String?,
+  serverTestSuccess: Boolean?,
+  serverTestInProgress: Boolean,
   initialUserId: String?,
   initialServerUrl: String?,
   onRegister: (serverUrl: String, userId: String, inviteCode: String, password: String) -> Unit,
   onLogin: (serverUrl: String, userId: String, password: String) -> Unit,
+  onTestServer: (serverUrl: String) -> Unit,
+  onClearServerTest: () -> Unit,
 ) {
   val serverOptions = remember {
     mutableStateListOf(
-      ServerOption(label = "vimalinx-server", url = DEFAULT_SERVER_URL),
+      ServerOption(label = "Direct", url = DEFAULT_SERVER_URL),
     )
   }
   val startingServer = initialServerUrl?.trim().orEmpty()
@@ -257,7 +267,8 @@ private fun AccountScreen(
   val unknownServerLabel = stringResource(R.string.label_unknown_server)
 
   LaunchedEffect(selectedServer) {
-    if (serverOptions.none { it.url == selectedServer } && selectedServer.isNotBlank()) {
+    onClearServerTest()
+    if (selectedServer.isNotBlank() && serverOptions.none { it.url == selectedServer }) {
       serverOptions.add(
         ServerOption(
           label = formatServerLabel(selectedServer, unknownServerLabel),
@@ -317,7 +328,36 @@ private fun AccountScreen(
             selectedUrl = selectedServer,
             onSelected = { selectedServer = it },
             onAddServer = { showAddServer = true },
+            onRemoveServer = { url ->
+              if (serverOptions.size <= 1) {
+                return@ServerPicker
+              }
+              serverOptions.removeAll { it.url == url }
+              if (selectedServer == url) {
+                selectedServer = serverOptions.firstOrNull()?.url ?: ""
+              }
+            }
           )
+          if (!serverTestMessage.isNullOrBlank()) {
+            if (serverTestSuccess == true) {
+              InfoCard(text = serverTestMessage)
+            } else {
+              ErrorCard(text = serverTestMessage)
+            }
+          }
+          OutlinedButton(
+            onClick = { onTestServer(selectedServer) },
+            enabled = selectedServer.isNotBlank() && !serverTestInProgress,
+            modifier = Modifier.fillMaxWidth(),
+          ) {
+            Text(
+              if (serverTestInProgress) {
+                stringResource(R.string.status_testing)
+              } else {
+                stringResource(R.string.action_test_server)
+              },
+            )
+          }
           Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             TextButton(onClick = { isLogin = false }) {
               Text(stringResource(R.string.action_register))
@@ -414,7 +454,9 @@ private fun AccountScreen(
           onClick = {
             val label = newServerName.trim().ifBlank { defaultServerLabel }
             val url = normalizeServerUrl(newServerUrl)
-            serverOptions.add(ServerOption(label = label, url = url))
+            if (serverOptions.none { it.url == url }) {
+              serverOptions.add(ServerOption(label = label, url = url))
+            }
             selectedServer = url
             newServerName = ""
             newServerUrl = ""
@@ -1351,6 +1393,7 @@ private fun ServerPicker(
   selectedUrl: String,
   onSelected: (String) -> Unit,
   onAddServer: () -> Unit,
+  onRemoveServer: (String) -> Unit,
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     Row(
@@ -1376,6 +1419,12 @@ private fun ServerPicker(
         if (isSelected) {
           Button(onClick = { onSelected(server.url) }) {
             Text(server.label)
+            Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+              imageVector = Icons.Default.Delete,
+              contentDescription = "Remove",
+              modifier = Modifier.size(16.dp).clickable { onRemoveServer(server.url) },
+            )
           }
         } else {
           OutlinedButton(onClick = { onSelected(server.url) }) {

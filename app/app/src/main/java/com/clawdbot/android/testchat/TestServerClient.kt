@@ -70,6 +70,12 @@ data class TestServerTokenUsageResponse(
 )
 
 @Serializable
+data class TestServerHealthResponse(
+  val ok: Boolean? = null,
+  val error: String? = null,
+)
+
+@Serializable
 data class TestServerRegisterPayload(
   val userId: String,
   val inviteCode: String,
@@ -106,7 +112,7 @@ class TestServerClient(
       Request.Builder()
         .url(url)
         .header("Authorization", "Bearer ${credentials.token}")
-        .header("x-test-user", credentials.userId)
+        .header("x-vimalinx-user", credentials.userId)
         .build()
     return EventSources.createFactory(client).newEventSource(request, listener)
   }
@@ -272,6 +278,27 @@ class TestServerClient(
     }
   }
 
+  suspend fun checkHealth(serverUrl: String): TestServerHealthResponse {
+    val request =
+      Request.Builder()
+        .url("${normalizeBaseUrl(serverUrl)}/healthz")
+        .get()
+        .build()
+    return withContext(Dispatchers.IO) {
+      client.newCall(request).execute().use { response ->
+        val raw = response.body?.string() ?: ""
+        val parsed =
+          runCatching { json.decodeFromString(TestServerHealthResponse.serializer(), raw) }
+            .getOrNull()
+        if (!response.isSuccessful) {
+          return@use parsed?.copy(ok = false, error = parsed.error ?: "HTTP ${response.code}")
+            ?: TestServerHealthResponse(ok = false, error = "HTTP ${response.code}")
+        }
+        parsed ?: TestServerHealthResponse(ok = false, error = "Invalid response")
+      }
+    }
+  }
+
   suspend fun sendMessage(
     credentials: TestChatCredentials,
     chatId: String,
@@ -296,7 +323,7 @@ class TestServerClient(
         .url("${normalizeBaseUrl(credentials.serverUrl)}/api/message")
         .post(body)
         .header("Authorization", "Bearer ${credentials.token}")
-        .header("x-test-user", credentials.userId)
+        .header("x-vimalinx-user", credentials.userId)
         .build()
     return withContext(Dispatchers.IO) { client.newCall(request).execute() }
   }
