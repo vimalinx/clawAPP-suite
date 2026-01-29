@@ -5,7 +5,7 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_DIR="${REPO_DIR}/plugin"
 TARGET_DIR="${VIMALINX_PLUGIN_DIR:-$HOME/.clawdbot/extensions/vimalinx-server-plugin}"
 CONFIG_PATH="${CLAWDBOT_CONFIG:-$HOME/.clawdbot/clawdbot.json}"
-DEFAULT_SERVER_URL="http://123.60.21.129:8788"
+DEFAULT_SERVER_URL="https://vimagram.vimalinx.xyz"
 SERVER_URL="${VIMALINX_SERVER_URL:-}"
 TOKEN="${VIMALINX_TOKEN:-}"
 INBOUND_MODE="${VIMALINX_INBOUND_MODE:-poll}"
@@ -47,6 +47,9 @@ if [[ -z "${SERVER_URL}" ]]; then
   read -r -p "Vimalinx Server URL [${DEFAULT_SERVER_URL}]: " SERVER_URL
 fi
 SERVER_URL="${SERVER_URL:-$DEFAULT_SERVER_URL}"
+if [[ ! "${SERVER_URL}" =~ ^https?:// ]]; then
+  SERVER_URL="https://${SERVER_URL}"
+fi
 SERVER_URL="${SERVER_URL%/}"
 
 if [[ -z "${TOKEN}" ]]; then

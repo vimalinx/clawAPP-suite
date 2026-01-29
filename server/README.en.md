@@ -22,6 +22,7 @@ node server/server.mjs
 Set environment variables:
 
 - `TEST_SERVER_PORT` (default `8788`)
+- `TEST_BIND_HOST` (bind address, default `0.0.0.0`)
 - `TEST_SERVER_TOKEN` (optional global secret for `/send`; user token also works)
 - `TEST_GATEWAY_URL` (fallback Gateway webhook URL)
 - `TEST_GATEWAY_TOKEN` (fallback Gateway token; per-user override available)
@@ -35,6 +36,10 @@ Set environment variables:
 - `TEST_HMAC_SECRET` (shared HMAC secret for signing webhook + send/poll requests)
 - `TEST_REQUIRE_SIGNATURE` (`true` or `false`, default `true` when secret is set)
 - `TEST_SIGNATURE_TTL_MS` (signature timestamp window, default `300000`)
+- `TEST_SECRET_KEY` (enable token HMAC hashing, recommended)
+- `TEST_TRUST_PROXY` (set to `true` behind a reverse proxy)
+- `TEST_RATE_LIMIT` (enable rate limiting, default `true`)
+- `TEST_SCRYPT_N`/`TEST_SCRYPT_R`/`TEST_SCRYPT_P`/`TEST_SCRYPT_KEY_LEN` (password hash params)
 
 ## Invite code modes
 
@@ -80,12 +85,15 @@ node server/server.mjs
 - Run behind a process manager (systemd, PM2, etc.) for restarts.
 - Make sure the users file is writable when registrations are enabled.
 - Protect `/send` with `TEST_SERVER_TOKEN` and/or per-user tokens.
+- Set `TEST_SECRET_KEY` to avoid storing tokens in plaintext.
+- If you run behind a proxy, set `TEST_TRUST_PROXY=true` to rate-limit by real IP.
 
 ## Endpoints
 
 - `GET /` web UI
 - `GET /api/stream?userId=...&token=...&lastEventId=...` SSE stream (supports replay)
 - `GET /api/poll?userId=...&waitMs=...` long-poll inbound queue (Authorization: Bearer `<user token>`)
+- `GET /api/config` config probe
 - `POST /api/message` enqueue message (poll mode) or forward to Gateway (webhook mode)
 - `POST /api/register` create a new user (invite code required when enabled)
 - `POST /api/account/login` login with `userId` + `password`
@@ -160,3 +168,9 @@ Register payload (client -> server):
   "password": "your-password"
 }
 ```
+
+## Security notes
+
+- Passwords are stored with scrypt hashes; legacy plaintext `password` values are auto-migrated.
+- With `TEST_SECRET_KEY`, tokens are stored as HMAC hashes (no plaintext in the users file).
+- Basic rate limits apply to register/login/token endpoints. Disable with `TEST_RATE_LIMIT=false`.

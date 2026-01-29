@@ -6,6 +6,7 @@ import com.clawdbot.android.R
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -82,9 +83,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.AnnotatedString
@@ -96,6 +99,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isUnspecified
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.text.method.LinkMovementMethod
 import android.util.TypedValue
 import android.widget.TextView
@@ -113,6 +119,7 @@ fun TestChatApp(viewModel: TestChatViewModel) {
   val state by viewModel.uiState.collectAsState()
   val languageTag by viewModel.languageTag.collectAsState()
   val disclaimerAccepted by viewModel.disclaimerAccepted.collectAsState()
+  val serverConfig by viewModel.serverConfig.collectAsState()
   val context = LocalContext.current
   var registrationUserId by remember { mutableStateOf<String?>(null) }
   var currentTab by rememberSaveable { mutableStateOf(MainTab.Chat) }
@@ -132,6 +139,8 @@ fun TestChatApp(viewModel: TestChatViewModel) {
         errorText = state.errorText,
         initialUserId = state.account?.userId,
         initialServerUrl = state.account?.serverUrl,
+        serverConfig = serverConfig,
+        onRefreshServerConfig = viewModel::refreshServerConfig,
         onRegister = { serverUrl, userId, inviteCode, password ->
           viewModel.registerAccount(serverUrl, userId, inviteCode, password) { registeredId ->
             registrationUserId = registeredId
@@ -232,6 +241,8 @@ private fun AccountScreen(
   errorText: String?,
   initialUserId: String?,
   initialServerUrl: String?,
+  serverConfig: TestServerConfigState,
+  onRefreshServerConfig: (String) -> Unit,
   onRegister: (serverUrl: String, userId: String, inviteCode: String, password: String) -> Unit,
   onLogin: (serverUrl: String, userId: String, password: String) -> Unit,
 ) {
@@ -255,8 +266,19 @@ private fun AccountScreen(
   var newServerUrl by rememberSaveable { mutableStateOf("") }
   val defaultServerLabel = stringResource(R.string.default_custom_server_label)
   val unknownServerLabel = stringResource(R.string.label_unknown_server)
+  val normalizedSelectedServer = normalizeServerUrl(selectedServer)
+  val configMatchesServer = serverConfig.serverUrl == normalizedSelectedServer
+  val inviteRequirement = if (configMatchesServer) serverConfig.inviteRequired else null
+  val allowRegistration = if (configMatchesServer) serverConfig.allowRegistration != false else true
+  val inviteLabelRes =
+    if (inviteRequirement == null) {
+      R.string.label_invite_code_optional
+    } else {
+      R.string.label_invite_code
+    }
 
   LaunchedEffect(selectedServer) {
+    onRefreshServerConfig(selectedServer)
     if (serverOptions.none { it.url == selectedServer } && selectedServer.isNotBlank()) {
       serverOptions.add(
         ServerOption(
@@ -270,6 +292,12 @@ private fun AccountScreen(
   LaunchedEffect(initialUserId) {
     if (!initialUserId.isNullOrBlank() && loginUserId.isBlank()) {
       loginUserId = initialUserId
+    }
+  }
+
+  LaunchedEffect(inviteRequirement) {
+    if (inviteRequirement == false) {
+      inviteCode = ""
     }
   }
 
@@ -357,13 +385,26 @@ private fun AccountScreen(
               singleLine = true,
               colors = textFieldColors(),
             )
-            TextField(
-              value = inviteCode,
-              onValueChange = { inviteCode = it },
-              label = { Text(stringResource(R.string.label_invite_code)) },
-              singleLine = true,
-              colors = textFieldColors(),
-            )
+            if (!allowRegistration) {
+              InfoCard(text = stringResource(R.string.info_registration_disabled))
+            }
+            if (inviteRequirement == false) {
+              InfoCard(text = stringResource(R.string.info_invite_not_required))
+            } else {
+              TextField(
+                value = inviteCode,
+                onValueChange = { inviteCode = it },
+                label = { Text(stringResource(inviteLabelRes)) },
+                placeholder =
+                  if (inviteRequirement == null) {
+                    { Text(stringResource(R.string.placeholder_invite_optional)) }
+                  } else {
+                    null
+                  },
+                singleLine = true,
+                colors = textFieldColors(),
+              )
+            }
             TextField(
               value = registerPassword,
               onValueChange = { registerPassword = it },
@@ -376,7 +417,10 @@ private fun AccountScreen(
               onClick = { onRegister(selectedServer, registerUserId, inviteCode, registerPassword) },
               modifier = Modifier.fillMaxWidth(),
               enabled =
-                registerUserId.isNotBlank() && inviteCode.isNotBlank() && registerPassword.isNotBlank(),
+                allowRegistration &&
+                  registerUserId.isNotBlank() &&
+                  registerPassword.isNotBlank() &&
+                  (inviteRequirement != true || inviteCode.isNotBlank()),
             ) {
               Text(stringResource(R.string.action_register))
             }
@@ -986,6 +1030,8 @@ private fun AccountDashboardScreen(
       ?: stringResource(R.string.label_unknown_server)
   val hosts = state.hosts
   val clipboard = LocalClipboardManager.current
+  val context = LocalContext.current
+  val authorUrl = "https://vimalinx.xyz"
   var showLogoutConfirm by remember { mutableStateOf(false) }
 
   Scaffold(
@@ -1043,6 +1089,35 @@ private fun AccountDashboardScreen(
           selectedTag = languageTag,
           onSelected = onLanguageChange,
         )
+      }
+      item {
+        SectionHeader(text = stringResource(R.string.title_about_author))
+        Card(
+          shape = RoundedCornerShape(18.dp),
+          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        ) {
+          Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+          ) {
+            Text(
+              text = stringResource(R.string.label_author_site),
+              style = MaterialTheme.typography.bodyMedium,
+            )
+            OutlinedButton(onClick = { openExternalUrl(context, authorUrl) }) {
+              Text(stringResource(R.string.action_open_site))
+            }
+            Image(
+              painter = painterResource(R.drawable.xiaohongshu_card),
+              contentDescription = stringResource(R.string.label_xiaohongshu_card),
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .clip(RoundedCornerShape(16.dp)),
+              contentScale = ContentScale.FillWidth,
+            )
+          }
+        }
       }
       item {
         Spacer(modifier = Modifier.height(4.dp))
@@ -1726,6 +1801,13 @@ private fun normalizeServerUrl(raw: String): String {
   }
 }
 
+private fun openExternalUrl(context: Context, url: String) {
+  runCatching {
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+    context.startActivity(intent)
+  }
+}
+
 @Composable
 private fun formatDeliveryStatus(raw: String?): String? {
   return when (raw) {
@@ -1983,4 +2065,4 @@ private val machinePalette =
   )
 
 private const val UUID_PREFIX = "local"
-private const val DEFAULT_SERVER_URL = "http://123.60.21.129:8788"
+private const val DEFAULT_SERVER_URL = "https://vimagram.vimalinx.xyz"

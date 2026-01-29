@@ -78,7 +78,7 @@ async function loginTestUser(params: {
   return { userId: data.userId, token: data.token };
 }
 
-const DEFAULT_TEST_SERVER_URL = "http://123.60.21.129:8788";
+const DEFAULT_TEST_SERVER_URL = "https://vimagram.vimalinx.xyz";
 const OFFICIAL_SERVER_LABEL = "Vimalinx official";
 const CUSTOM_SERVER_LABEL = "Custom server";
 

@@ -11,11 +11,49 @@
 
 ## 安装
 
-最简单（客户）：克隆仓库后在根目录运行：
+面向最终用户的最简流程（推荐）：
+
+1) 安装 Clawdbot（只需一次）
+
+```bash
+npm install -g clawdbot@latest
+```
+
+2) 在仓库根目录运行一键安装
 
 ```bash
 ./install.sh
 ```
+
+3) 按提示输入
+- 服务器地址：`https://vimagram.vimalinx.xyz`
+- Token：在 Vimagram App 的 Account 页面生成/复制
+
+完成后脚本会自动配置并重启 Gateway。
+
+可选：不交互模式
+
+```bash
+VIMALINX_SERVER_URL="https://vimagram.vimalinx.xyz" \
+VIMALINX_TOKEN="你的Token" \
+./install.sh
+```
+
+可选：跳过自动步骤
+
+```bash
+VIMALINX_SKIP_DOCTOR_FIX=1 \
+VIMALINX_SKIP_GATEWAY_START=1 \
+VIMALINX_SKIP_STATUS=1 \
+./install.sh
+```
+
+可选：覆盖已有插件安装
+
+```bash
+VIMALINX_FORCE_OVERWRITE=1 ./install.sh
+```
+
 
 ## 配置（向导）
 
@@ -35,7 +73,7 @@ clawdbot onboard
 ```yaml
 channels:
   test:
-    baseUrl: http://server-host:8788
+    baseUrl: https://vimagram.vimalinx.xyz
     userId: user-id
     token: host-token
     inboundMode: poll

@@ -5,16 +5,17 @@ SERVER_URL="${TEST_SERVER_URL:-}"
 USER_ID="${TEST_USER_ID:-}"
 DISPLAY_NAME="${TEST_DISPLAY_NAME:-}"
 PASSWORD="${TEST_PASSWORD:-}"
+INVITE_CODE="${TEST_INVITE_CODE:-}"
 SERVER_TOKEN="${TEST_SERVER_TOKEN:-}"
 CONFIG_PATH="${TEST_CONFIG_PATH:-$HOME/.clawdbot/clawdbot.json}"
 
 usage() {
   cat <<'EOF'
 Usage:
-  register-local.sh --server http://host:8788 --password <pwd> [--user alice] [--name Alice] [--server-token <token>] [--config <path>]
+  register-local.sh --server https://vimagram.vimalinx.xyz --password <pwd> [--user alice] [--name Alice] [--invite <code>] [--server-token <token>] [--config <path>]
 
 Environment:
-  TEST_SERVER_URL, TEST_USER_ID, TEST_DISPLAY_NAME, TEST_PASSWORD, TEST_SERVER_TOKEN, TEST_CONFIG_PATH
+  TEST_SERVER_URL, TEST_USER_ID, TEST_DISPLAY_NAME, TEST_PASSWORD, TEST_INVITE_CODE, TEST_SERVER_TOKEN, TEST_CONFIG_PATH
 EOF
 }
 
@@ -34,6 +35,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --password)
       PASSWORD="${2:-}"
+      shift 2
+      ;;
+    --invite)
+      INVITE_CODE="${2:-}"
       shift 2
       ;;
     --server-token)
@@ -64,16 +69,18 @@ fi
 
 SERVER_URL="${SERVER_URL%/}"
 
-payload="$(python3 - <<'PY' "$USER_ID" "$DISPLAY_NAME" "$PASSWORD"
+payload="$(python3 - <<'PY' "$USER_ID" "$DISPLAY_NAME" "$PASSWORD" "$INVITE_CODE"
 import json
 import sys
 
-user_id, display_name, password = sys.argv[1:4]
+user_id, display_name, password, invite_code = sys.argv[1:5]
 payload = {"password": password}
 if user_id:
   payload["userId"] = user_id
 if display_name:
   payload["displayName"] = display_name
+if invite_code:
+  payload["inviteCode"] = invite_code
 print(json.dumps(payload))
 PY
 )"
@@ -83,12 +90,34 @@ if [[ -n "$SERVER_TOKEN" ]]; then
   auth_header=(-H "Authorization: Bearer ${SERVER_TOKEN}")
 fi
 
-response="$(curl -sS -X POST "${SERVER_URL}/api/register" \
+register_response="$(curl -sS -X POST "${SERVER_URL}/api/register" \
   -H "Content-Type: application/json" \
   "${auth_header[@]}" \
   -d "${payload}")"
 
-python3 - "$CONFIG_PATH" "$SERVER_URL" "$response" <<'PY'
+user_id="$(python3 - "$register_response" <<'PY'
+import json
+import sys
+
+raw = sys.argv[1]
+
+try:
+  data = json.loads(raw)
+except json.JSONDecodeError as exc:
+  raise SystemExit(f"Registration failed: {exc}")
+
+if not data.get("ok") or not data.get("userId"):
+  raise SystemExit(f"Registration failed: {data.get('error', raw)}")
+
+print(str(data["userId"]))
+PY
+)"
+
+token_response="$(curl -sS -X POST "${SERVER_URL}/api/token" \
+  -H "Content-Type: application/json" \
+  -d "{\"userId\":\"${user_id}\",\"password\":\"${PASSWORD}\"}")"
+
+python3 - "$CONFIG_PATH" "$SERVER_URL" "$token_response" "$user_id" <<'PY'
 import json
 import os
 import sys
@@ -96,16 +125,16 @@ import sys
 config_path = sys.argv[1]
 server_url = sys.argv[2]
 raw = sys.argv[3]
+registered_user = sys.argv[4]
 
 try:
   data = json.loads(raw)
 except json.JSONDecodeError as exc:
-  raise SystemExit(f"Registration failed: {exc}")
+  raise SystemExit(f"Token request failed: {exc}")
 
-if not data.get("ok") or not data.get("userId") or not data.get("token"):
-  raise SystemExit(f"Registration failed: {data.get('error', raw)}")
+if not data.get("ok") or not data.get("token"):
+  raise SystemExit(f"Token request failed: {data.get('error', raw)}")
 
-user_id = str(data["userId"])
 token = str(data["token"])
 
 config = {}
@@ -128,7 +157,7 @@ test_cfg.update({
   "enabled": True,
   "baseUrl": server_url,
   "token": token,
-  "userId": user_id,
+  "userId": registered_user,
   "inboundMode": "poll",
   "dmPolicy": "open",
   "allowFrom": ["*"],
@@ -156,7 +185,7 @@ with open(config_path, "w", encoding="utf-8") as f:
   json.dump(config, f, indent=2, ensure_ascii=True)
   f.write("\n")
 
-print("Registered user:", user_id)
+print("Registered user:", registered_user)
 print("Updated config:", config_path)
 print("Restart: clawdbot gateway restart")
 PY

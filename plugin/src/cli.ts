@@ -34,11 +34,12 @@ export function registerTestCli(params: {
   root
     .command("register")
     .description("Register a test user and update local config")
-    .requiredOption("--server <url>", "Server base URL, e.g. http://1.2.3.4:8788")
+    .requiredOption("--server <url>", "Server base URL, e.g. https://vimagram.vimalinx.xyz")
     .requiredOption("--password <password>", "Account password (6-64 chars)")
     .option("--user <id>", "User id (optional)")
     .option("--name <name>", "Display name (optional)")
     .option("--server-token <token>", "Server registration token (optional)")
+    .option("--invite <code>", "Invite code (optional)")
     .action(
       async (options: {
         server: string;
@@ -46,6 +47,7 @@ export function registerTestCli(params: {
         user?: string;
         name?: string;
         serverToken?: string;
+        invite?: string;
       }) => {
         const serverUrl = resolveServerUrl(options.server);
         const password = options.password.trim();
@@ -54,6 +56,7 @@ export function registerTestCli(params: {
         const payload: Record<string, string> = { password };
         if (options.user?.trim()) payload.userId = options.user.trim();
         if (options.name?.trim()) payload.displayName = options.name.trim();
+        if (options.invite?.trim()) payload.inviteCode = options.invite.trim();
 
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
@@ -62,20 +65,36 @@ export function registerTestCli(params: {
           headers.Authorization = `Bearer ${options.serverToken.trim()}`;
         }
 
-        const response = await fetch(`${serverUrl}/api/register`, {
+        const registerResponse = await fetch(`${serverUrl}/api/register`, {
           method: "POST",
           headers,
           body: JSON.stringify(payload),
         });
-        const data = (await response.json().catch(() => ({}))) as {
+        const registerData = (await registerResponse.json().catch(() => ({}))) as {
+          ok?: boolean;
+          userId?: string;
+          error?: string;
+        };
+
+        if (!registerResponse.ok || !registerData.ok || !registerData.userId) {
+          throw new Error(
+            registerData.error ?? `Registration failed (${registerResponse.status})`,
+          );
+        }
+
+        const tokenResponse = await fetch(`${serverUrl}/api/token`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: registerData.userId, password }),
+        });
+        const tokenData = (await tokenResponse.json().catch(() => ({}))) as {
           ok?: boolean;
           userId?: string;
           token?: string;
           error?: string;
         };
-
-        if (!response.ok || !data.ok || !data.userId || !data.token) {
-          throw new Error(data.error ?? `Registration failed (${response.status})`);
+        if (!tokenResponse.ok || !tokenData.ok || !tokenData.token) {
+          throw new Error(tokenData.error ?? `Token request failed (${tokenResponse.status})`);
         }
 
         const cfg = runtime.config.loadConfig() as ClawdbotConfig;
@@ -86,8 +105,8 @@ export function registerTestCli(params: {
           ...existing,
           enabled: true,
           baseUrl: serverUrl,
-          token: data.token,
-          userId: data.userId,
+          token: tokenData.token,
+          userId: registerData.userId,
           inboundMode: "poll",
           dmPolicy: existing.dmPolicy ?? "open",
           allowFrom: resolveAllowFrom(existing.allowFrom),
@@ -109,7 +128,7 @@ export function registerTestCli(params: {
           },
         });
 
-        logger.info?.(`Registered "${data.userId}" and updated config.`);
+        logger.info?.(`Registered "${registerData.userId}" and updated config.`);
         logger.info?.("Restart: clawdbot gateway restart");
       },
     );

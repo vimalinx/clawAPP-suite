@@ -70,6 +70,14 @@ data class TestServerTokenUsageResponse(
 )
 
 @Serializable
+data class TestServerPublicConfigResponse(
+  val ok: Boolean? = null,
+  val inviteRequired: Boolean? = null,
+  val allowRegistration: Boolean? = null,
+  val error: String? = null,
+)
+
+@Serializable
 data class TestServerRegisterPayload(
   val userId: String,
   val inviteCode: String,
@@ -139,6 +147,28 @@ class TestServerClient(
             ?: TestServerLoginResponse(ok = false, error = "HTTP ${response.code}")
         }
         parsed ?: TestServerLoginResponse(ok = false, error = "Invalid response")
+      }
+    }
+  }
+
+  suspend fun fetchPublicConfig(serverUrl: String): TestServerPublicConfigResponse {
+    val request =
+      Request.Builder()
+        .url("${normalizeBaseUrl(serverUrl)}/api/config")
+        .get()
+        .build()
+    return withContext(Dispatchers.IO) {
+      client.newCall(request).execute().use { response ->
+        val raw = response.body?.string() ?: ""
+        val parsed =
+          runCatching {
+            json.decodeFromString(TestServerPublicConfigResponse.serializer(), raw)
+          }.getOrNull()
+        if (!response.isSuccessful) {
+          return@use parsed?.copy(ok = false, error = parsed.error ?: "HTTP ${response.code}")
+            ?: TestServerPublicConfigResponse(ok = false, error = "HTTP ${response.code}")
+        }
+        parsed ?: TestServerPublicConfigResponse(ok = false, error = "Invalid response")
       }
     }
   }

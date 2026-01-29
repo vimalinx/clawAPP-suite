@@ -9,6 +9,8 @@
     <string name="label_user_id">User ID</string>
     <string name="label_password">Password</string>
     <string name="label_invite_code">Invite code</string>
+    <string name="label_invite_code_optional">Invite code (optional)</string>
+    <string name="placeholder_invite_optional">Leave blank if not required</string>
     <string name="title_add_server">Add server</string>
     <string name="label_server_name">Server name</string>
     <string name="label_server_url">Server URL</string>
@@ -48,6 +50,8 @@
     <string name="title_usage_totals">Usage totals</string>
     <string name="title_sessions">Sessions</string>
     <string name="info_no_sessions">No session activity yet.</string>
+    <string name="info_invite_not_required">This server does not require an invite code.</string>
+    <string name="info_registration_disabled">Registration is disabled on this server.</string>
     <string name="action_logout">Log out</string>
     <string name="title_logout_confirm">Log out?</string>
     <string name="msg_logout_confirm">You will need to sign in again to continue.</string>
@@ -90,7 +94,8 @@
     <string name="label_message">Message</string>
     <string name="action_send">Send</string>
     <string name="label_bot">Bot</string>
-    <string name="error_register_required">User ID, invite code, and password required</string>
+    <string name="error_register_required">User ID and password required</string>
+    <string name="error_register_invite_required">Invite code required</string>
     <string name="error_register_failed_detail">Registration failed: %1$s</string>
     <string name="error_register_failed">Registration failed</string>
     <string name="error_login_required">User ID and password required</string>
@@ -123,6 +128,10 @@
     <string name="label_token_value">Token: %1$s</string>
     <string name="info_no_hosts_connected">No hosts connected yet.</string>
     <string name="title_language">Language</string>
+    <string name="title_about_author">About the author</string>
+    <string name="label_author_site">Website: vimalinx.xyz</string>
+    <string name="action_open_site">Open website</string>
+    <string name="label_xiaohongshu_card">Xiaohongshu card</string>
     <string name="language_system">System</string>
     <string name="language_zh">Chinese</string>
     <string name="language_en">English</string>

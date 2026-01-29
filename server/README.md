@@ -22,6 +22,7 @@ node server/server.mjs
 环境变量：
 
 - `TEST_SERVER_PORT`（默认 `8788`）
+- `TEST_BIND_HOST`（监听地址，默认 `0.0.0.0`）
 - `TEST_SERVER_TOKEN`（可选，全局 `/send` 密钥）
 - `TEST_GATEWAY_URL`（Gateway webhook URL）
 - `TEST_GATEWAY_TOKEN`（Gateway token）
@@ -35,6 +36,10 @@ node server/server.mjs
 - `TEST_HMAC_SECRET`（Webhook/Send 的签名密钥）
 - `TEST_REQUIRE_SIGNATURE`（当 secret 存在时默认 true）
 - `TEST_SIGNATURE_TTL_MS`（签名时间窗，默认 `300000`）
+- `TEST_SECRET_KEY`（启用 Token HMAC 哈希，建议设置）
+- `TEST_TRUST_PROXY`（如有反向代理则设为 `true`）
+- `TEST_RATE_LIMIT`（是否启用限流，默认 `true`）
+- `TEST_SCRYPT_N`/`TEST_SCRYPT_R`/`TEST_SCRYPT_P`/`TEST_SCRYPT_KEY_LEN`（密码哈希参数）
 
 ## 邀请码模式
 
@@ -77,12 +82,15 @@ node server/server.mjs
 - 使用 systemd/PM2 等保证进程守护。
 - 开启注册时确保 users 文件可写。
 - 建议开启 `TEST_SERVER_TOKEN` 或使用用户 token 保护 `/send`。
+- 建议设置 `TEST_SECRET_KEY`，避免用户文件中明文保存 token。
+- 若在反向代理后部署，设置 `TEST_TRUST_PROXY=true` 以启用真实 IP 限流。
 
 ## 端点概览
 
 - `GET /` web UI
 - `GET /api/stream` SSE
 - `GET /api/poll` 长轮询
+- `GET /api/config` 配置探测
 - `POST /api/message` 入站消息
 - `POST /api/register` 注册
 - `POST /api/account/login` 账号密码登录
@@ -156,3 +164,9 @@ x-test-signature: HMAC_SHA256(secret, "${timestamp}.${nonce}.${rawBody}")
   "password": "your-password"
 }
 ```
+
+## 安全说明
+
+- 密码以 scrypt 哈希存储；首次运行会自动迁移旧的明文 `password` 字段。
+- 设置 `TEST_SECRET_KEY` 后，Token 会以 HMAC 形式保存（文件中不再是明文）。
+- 注册/登录/Token 接口有基础限流，可用 `TEST_RATE_LIMIT=false` 关闭。

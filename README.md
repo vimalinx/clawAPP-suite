@@ -7,7 +7,52 @@ Vimalinx Suite 是 Vimalinx Server 通道的全栈实现：
 - Plugin：`plugin`
 - Android App（Vimagram）：`app`
 
-## 快速启动（本地）
+## 一键安装插件（推荐）
+
+面向最终用户的最简流程：
+
+1) 安装 Clawdbot（只需一次）
+
+```bash
+npm install -g clawdbot@latest
+```
+
+2) 在仓库根目录运行一键安装
+
+```bash
+./install.sh
+```
+
+3) 按提示输入
+- 服务器地址：`https://vimagram.vimalinx.xyz`
+- Token：在 Vimagram App 的 Account 页面生成/复制
+
+完成后脚本会自动配置并重启 Gateway。
+
+可选：不交互模式
+
+```bash
+VIMALINX_SERVER_URL="https://vimagram.vimalinx.xyz" \
+VIMALINX_TOKEN="你的Token" \
+./install.sh
+```
+
+可选：跳过自动步骤
+
+```bash
+VIMALINX_SKIP_DOCTOR_FIX=1 \
+VIMALINX_SKIP_GATEWAY_START=1 \
+VIMALINX_SKIP_STATUS=1 \
+./install.sh
+```
+
+可选：覆盖已有插件安装
+
+```bash
+VIMALINX_FORCE_OVERWRITE=1 ./install.sh
+```
+
+## 自建服务器（可选）
 
 准备：安装 Node 22+，并全局安装 CLI。
 
@@ -30,17 +75,6 @@ node server/server.mjs
 ```bash
 clawdbot gateway --port 18789 --verbose
 ```
-
-安装并配置插件（已克隆仓库一键安装）：
-
-```bash
-./install.sh
-```
-
-脚本会提示输入 Server URL 与 Token，并自动写入配置（无需再跑 onboard）。
-默认会执行：doctor --fix、gateway stop/start、channels status --probe（含短暂等待）。
-如需跳过，可设置：VIMALINX_SKIP_DOCTOR_FIX=1 / VIMALINX_SKIP_GATEWAY_START=1 / VIMALINX_SKIP_STATUS=1。
-如需覆盖已安装插件，可设置：`VIMALINX_FORCE_OVERWRITE=1 ./install.sh`。
 
 ## Android App（Vimagram）
 

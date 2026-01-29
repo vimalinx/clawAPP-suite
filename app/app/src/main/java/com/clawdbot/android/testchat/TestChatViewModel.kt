@@ -33,6 +33,14 @@ data class TestChatUiState(
   val messages: List<TestChatMessage> = emptyList(),
 )
 
+data class TestServerConfigState(
+  val serverUrl: String = "",
+  val inviteRequired: Boolean? = null,
+  val allowRegistration: Boolean? = null,
+  val loading: Boolean = false,
+  val error: String? = null,
+)
+
 class TestChatViewModel(app: Application) : AndroidViewModel(app) {
   private fun appString(@StringRes id: Int, vararg args: Any): String {
     return getApplication<Application>().getString(id, *args)
@@ -62,6 +70,7 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
   private val _activeChatId = MutableStateFlow<String?>(null)
   private val _isInForeground = MutableStateFlow(true)
   private val _tokenUsage = MutableStateFlow<Map<String, TestChatTokenUsage>>(emptyMap())
+  private val _serverConfig = MutableStateFlow(TestServerConfigState())
 
   private val hostStates = mutableMapOf<String, TestChatConnectionState>()
   private val hostStreams = mutableMapOf<String, HostStreamState>()
@@ -112,6 +121,7 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
 
   val languageTag: StateFlow<String> = _languageTag
   val disclaimerAccepted: StateFlow<Boolean> = _disclaimerAccepted
+  val serverConfig: StateFlow<TestServerConfigState> = _serverConfig
 
   init {
     val account = _account.value
@@ -142,8 +152,15 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
     val normalizedUser = userId.trim()
     val normalizedInvite = inviteCode.trim()
     val normalizedPassword = password.trim()
-    if (normalizedUser.isBlank() || normalizedInvite.isBlank() || normalizedPassword.length < 6) {
+    if (normalizedUser.isBlank() || normalizedPassword.length < 6) {
       _errorText.value = appString(R.string.error_register_required)
+      return
+    }
+    val config = _serverConfig.value
+    val inviteRequired =
+      config.serverUrl == normalizedServer && config.inviteRequired == true
+    if (inviteRequired && normalizedInvite.isBlank()) {
+      _errorText.value = appString(R.string.error_register_invite_required)
       return
     }
     _errorText.value = null
@@ -179,6 +196,51 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
       loadAccount(account)
       startStreams(account, _hosts.value)
       refreshTokenUsage(account, normalizedPassword)
+    }
+  }
+
+  fun refreshServerConfig(serverUrl: String) {
+    val normalizedServer = client.normalizeBaseUrl(serverUrl)
+    if (_serverConfig.value.serverUrl == normalizedServer && _serverConfig.value.loading) return
+    _serverConfig.value =
+      _serverConfig.value.copy(
+        serverUrl = normalizedServer,
+        loading = true,
+        error = null,
+      )
+    viewModelScope.launch {
+      val response =
+        runCatching { client.fetchPublicConfig(normalizedServer) }
+          .getOrElse {
+            _serverConfig.value =
+              TestServerConfigState(
+                serverUrl = normalizedServer,
+                inviteRequired = null,
+                allowRegistration = null,
+                loading = false,
+                error = it.message,
+              )
+            return@launch
+          }
+      if (response.ok != true) {
+        _serverConfig.value =
+          TestServerConfigState(
+            serverUrl = normalizedServer,
+            inviteRequired = null,
+            allowRegistration = null,
+            loading = false,
+            error = response.error,
+          )
+        return@launch
+      }
+      _serverConfig.value =
+        TestServerConfigState(
+          serverUrl = normalizedServer,
+          inviteRequired = response.inviteRequired,
+          allowRegistration = response.allowRegistration,
+          loading = false,
+          error = null,
+        )
     }
   }
 
