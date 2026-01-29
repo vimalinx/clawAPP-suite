@@ -18,51 +18,6 @@ Simplest (customers): clone the repo and run at the root:
 ./install.sh
 ```
 
-From npm (recommended for releases):
-
-```bash
-clawdbot plugins install vimalinx-server-plugin
-```
-
-Offline package (no npm):
-
-Packager:
-
-```bash
-./plugin/scripts/pack-release.sh
-```
-
-Customer install:
-
-```bash
-tar -xzf vimalinx-server-plugin-*.tgz
-./package/scripts/install.sh
-```
-
-From a local checkout (dev/debug):
-
-```bash
-clawdbot plugins install ./plugin
-```
-
-One-click install script (recommended):
-
-```bash
-./plugin/scripts/install.sh
-```
-
-For dev (no copy, live link):
-
-```bash
-clawdbot plugins install -l ./plugin
-```
-
-If the plugin shows as disabled:
-
-```bash
-clawdbot plugins enable vimalinx-server-plugin
-```
-
 ## Configure (wizard)
 
 ```bash

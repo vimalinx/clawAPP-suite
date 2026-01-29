@@ -17,51 +17,6 @@
 ./install.sh
 ```
 
-从 npm 安装（推荐发布给客户）：
-
-```bash
-clawdbot plugins install vimalinx-server-plugin
-```
-
-离线安装包（不走 npm）：
-
-发布方打包：
-
-```bash
-./plugin/scripts/pack-release.sh
-```
-
-客户安装：
-
-```bash
-tar -xzf vimalinx-server-plugin-*.tgz
-./package/scripts/install.sh
-```
-
-从本地仓库安装（开发/调试）：
-
-```bash
-clawdbot plugins install ./plugin
-```
-
-一键安装脚本（推荐）：
-
-```bash
-./plugin/scripts/install.sh
-```
-
-开发模式（不复制、软链接）：
-
-```bash
-clawdbot plugins install -l ./plugin
-```
-
-如果插件显示为禁用：
-
-```bash
-clawdbot plugins enable vimalinx-server-plugin
-```
-
 ## 配置（向导）
 
 ```bash
