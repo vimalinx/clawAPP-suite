@@ -725,7 +725,7 @@
           return;
         }
         const baseUrl = window.location.origin;
-        configSnippetEl.textContent = `channels: {\n  test: {\n    enabled: true,\n    baseUrl: \"${baseUrl}\",\n    token: \"${token}\",\n    userId: \"${userId}\",\n    inboundMode: \"poll\",\n    dmPolicy: \"open\",\n    allowFrom: [\"*\"]\n  }\n}`;
+        configSnippetEl.textContent = `channels: {\n  vimalinx: {\n    enabled: true,\n    baseUrl: \"${baseUrl}\",\n    token: \"${token}\",\n    userId: \"${userId}\",\n    inboundMode: \"poll\",\n    dmPolicy: \"open\",\n    allowFrom: [\"*\"]\n  }\n}`;
       }
 
       function connect() {

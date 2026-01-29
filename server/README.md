@@ -2,7 +2,7 @@
 
 中文 | [English](README.en.md)
 
-Vimalinx Server 插件的最小聊天服务器（channel id: `test`）。
+Vimalinx Server 插件的最小聊天服务器（channel id: `vimalinx`）。
 
 ## 快速启动（本地轮询模式）
 
@@ -58,7 +58,7 @@ export TEST_ALLOW_REGISTRATION=false
 
 ```bash
 export TEST_INBOUND_MODE=webhook
-export TEST_GATEWAY_URL=https://gateway-host:18789/test-webhook
+export TEST_GATEWAY_URL=https://gateway-host:18789/vimalinx-webhook
 ```
 
 注意：
@@ -141,9 +141,9 @@ Poll 响应（服务器 -> Gateway）：
 签名头（启用签名时）：
 
 ```
-x-test-timestamp: <unix_ms>
-x-test-nonce: <random>
-x-test-signature: HMAC_SHA256(secret, "${timestamp}.${nonce}.${rawBody}")
+x-vimalinx-timestamp: <unix_ms>
+x-vimalinx-nonce: <random>
+x-vimalinx-signature: HMAC_SHA256(secret, "${timestamp}.${nonce}.${rawBody}")
 ```
 
 注册示例（客户端 -> 服务器）：
