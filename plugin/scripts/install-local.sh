@@ -18,6 +18,7 @@ cd "${TARGET_DIR}"
 npm install --omit=dev
 
 clawdbot plugins install "${TARGET_DIR}"
+clawdbot plugins enable test >/dev/null 2>&1 || true
 
 cat <<'EOF'
 Done.

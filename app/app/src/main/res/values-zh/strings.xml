@@ -104,6 +104,12 @@
     <string name="error_host_name_exists">主机名称已存在</string>
     <string name="error_token_request_failed_detail">请求 Token 失败：%1$s</string>
     <string name="error_token_request_failed">请求 Token 失败</string>
+    <string name="error_token_request_timeout">请求 Token 超时，请检查服务器后重试。</string>
+    <string name="action_test_connection">连接测试</string>
+    <string name="info_server_test_ok">服务器可达。</string>
+    <string name="error_server_test_failed_detail">服务器检测失败：%1$s</string>
+    <string name="error_server_test_failed">服务器不可达</string>
+    <string name="error_server_test_timeout">服务器检测超时，请检查地址后重试。</string>
     <string name="label_host_session">%1$s 会话</string>
     <string name="error_login_failed_detail">登录失败：%1$s</string>
     <string name="error_login_failed">登录失败</string>
@@ -130,6 +136,7 @@
     <string name="title_language">语言</string>
     <string name="title_about_author">关于作者</string>
     <string name="label_author_site">网站：vimalinx.xyz</string>
+    <string name="label_vimalinx_server">Vimalinx 服务器</string>
     <string name="action_open_site">打开网站</string>
     <string name="label_xiaohongshu_card">小红书名片</string>
     <string name="language_system">跟随系统</string>

@@ -332,12 +332,7 @@ class TestServerClient(
   }
 
   fun normalizeBaseUrl(raw: String): String {
-    val trimmed = raw.trim().removeSuffix("/")
-    return if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-      trimmed
-    } else {
-      "http://$trimmed"
-    }
+    return normalizeServerBaseUrl(raw)
   }
 
   private fun encode(value: String): String {

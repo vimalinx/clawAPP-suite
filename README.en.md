@@ -84,7 +84,8 @@ cd app
 ```
 
 Then log in to the server, generate a host token in **Account**, and paste it in the
-plugin onboarding flow.
+plugin onboarding flow. On the login screen you can tap “Test connection” to
+verify reachability; if invites are disabled the UI says the code is not required.
 
 ## Docs
 

@@ -1,5 +1,5 @@
 {
-  "id": "vimalinx-server-plugin",
+  "id": "test",
   "channels": ["test"],
   "configSchema": {
     "type": "object",

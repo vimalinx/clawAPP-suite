@@ -58,9 +58,10 @@ class TestChatPrefs(context: Context) {
   private val lastEventIds = loadLastEventIds().toMutableMap()
 
   fun saveAccount(account: TestChatAccount, password: String) {
+    val normalizedServer = normalizeServerBaseUrl(account.serverUrl)
     val sanitized =
       TestChatAccount(
-        serverUrl = account.serverUrl.trim(),
+        serverUrl = normalizedServer.trim(),
         userId = account.userId.trim(),
       )
     prefs.edit {
@@ -134,8 +135,12 @@ class TestChatPrefs(context: Context) {
   }
 
   private fun loadAccount(): TestChatAccount? {
-    val serverUrl = prefs.getString(serverUrlKey, null)?.trim().orEmpty()
+    val rawServerUrl = prefs.getString(serverUrlKey, null)?.trim().orEmpty()
+    val serverUrl = normalizeServerBaseUrl(rawServerUrl)
     val userId = prefs.getString(userIdKey, null)?.trim().orEmpty()
+    if (serverUrl.isNotBlank() && serverUrl != rawServerUrl) {
+      prefs.edit { putString(serverUrlKey, serverUrl) }
+    }
     return if (serverUrl.isNotEmpty() && userId.isNotEmpty()) {
       TestChatAccount(serverUrl = serverUrl, userId = userId)
     } else null

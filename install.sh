@@ -41,7 +41,7 @@ else
 fi
 
 # Plugins are loaded from ~/.clawdbot/extensions, so no install step needed.
-clawdbot plugins enable vimalinx-server-plugin >/dev/null 2>&1 || true
+clawdbot plugins enable test >/dev/null 2>&1 || true
 
 if [[ -z "${SERVER_URL}" ]]; then
   read -r -p "Vimalinx Server URL [${DEFAULT_SERVER_URL}]: " SERVER_URL
@@ -127,8 +127,8 @@ if not isinstance(plugins, dict):
 entries = plugins.get("entries")
 if not isinstance(entries, dict):
   entries = {}
-entries.pop("test", None)
-entries["vimalinx-server-plugin"] = {**entries.get("vimalinx-server-plugin", {}), "enabled": True}
+entries.pop("vimalinx-server-plugin", None)
+entries["test"] = {**entries.get("test", {}), "enabled": True}
 plugins["entries"] = entries
 
 load = plugins.get("load")

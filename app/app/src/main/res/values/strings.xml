@@ -104,6 +104,12 @@
     <string name="error_host_name_exists">Host name already exists</string>
     <string name="error_token_request_failed_detail">Token request failed: %1$s</string>
     <string name="error_token_request_failed">Token request failed</string>
+    <string name="error_token_request_timeout">Token request timed out. Check the server and try again.</string>
+    <string name="action_test_connection">Test connection</string>
+    <string name="info_server_test_ok">Server reachable.</string>
+    <string name="error_server_test_failed_detail">Server check failed: %1$s</string>
+    <string name="error_server_test_failed">Server unreachable</string>
+    <string name="error_server_test_timeout">Server check timed out. Check the address and try again.</string>
     <string name="label_host_session">%1$s session</string>
     <string name="error_login_failed_detail">Login failed: %1$s</string>
     <string name="error_login_failed">Login failed</string>
@@ -130,6 +136,7 @@
     <string name="title_language">Language</string>
     <string name="title_about_author">About the author</string>
     <string name="label_author_site">Website: vimalinx.xyz</string>
+    <string name="label_vimalinx_server">Vimalinx Server</string>
     <string name="action_open_site">Open website</string>
     <string name="label_xiaohongshu_card">Xiaohongshu card</string>
     <string name="language_system">System</string>

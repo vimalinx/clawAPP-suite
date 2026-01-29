@@ -120,6 +120,7 @@ fun TestChatApp(viewModel: TestChatViewModel) {
   val languageTag by viewModel.languageTag.collectAsState()
   val disclaimerAccepted by viewModel.disclaimerAccepted.collectAsState()
   val serverConfig by viewModel.serverConfig.collectAsState()
+  val serverTestMessage by viewModel.serverTestMessage.collectAsState()
   val context = LocalContext.current
   var registrationUserId by remember { mutableStateOf<String?>(null) }
   var currentTab by rememberSaveable { mutableStateOf(MainTab.Chat) }
@@ -137,16 +138,19 @@ fun TestChatApp(viewModel: TestChatViewModel) {
     if (!state.isAuthenticated) {
       AccountScreen(
         errorText = state.errorText,
+        serverTestMessage = serverTestMessage,
         initialUserId = state.account?.userId,
         initialServerUrl = state.account?.serverUrl,
         serverConfig = serverConfig,
         onRefreshServerConfig = viewModel::refreshServerConfig,
+        onClearServerTest = viewModel::clearServerTestMessage,
         onRegister = { serverUrl, userId, inviteCode, password ->
           viewModel.registerAccount(serverUrl, userId, inviteCode, password) { registeredId ->
             registrationUserId = registeredId
           }
         },
         onLogin = viewModel::loginAccount,
+        onTestServer = viewModel::testServerConnection,
       )
     } else if (state.activeChatId != null) {
       ChatScreen(
@@ -239,16 +243,20 @@ private enum class MainTab {
 @Composable
 private fun AccountScreen(
   errorText: String?,
+  serverTestMessage: String?,
   initialUserId: String?,
   initialServerUrl: String?,
   serverConfig: TestServerConfigState,
   onRefreshServerConfig: (String) -> Unit,
+  onClearServerTest: () -> Unit,
   onRegister: (serverUrl: String, userId: String, inviteCode: String, password: String) -> Unit,
   onLogin: (serverUrl: String, userId: String, password: String) -> Unit,
+  onTestServer: (String) -> Unit,
 ) {
-  val serverOptions = remember {
+  val vimalinxServerLabel = stringResource(R.string.label_vimalinx_server)
+  val serverOptions = remember(vimalinxServerLabel) {
     mutableStateListOf(
-      ServerOption(label = "vimalinx-server", url = DEFAULT_SERVER_URL),
+      ServerOption(label = vimalinxServerLabel, url = DEFAULT_SERVER_URL),
     )
   }
   val startingServer = initialServerUrl?.trim().orEmpty()
@@ -279,6 +287,7 @@ private fun AccountScreen(
 
   LaunchedEffect(selectedServer) {
     onRefreshServerConfig(selectedServer)
+    onClearServerTest()
     if (serverOptions.none { it.url == selectedServer } && selectedServer.isNotBlank()) {
       serverOptions.add(
         ServerOption(
@@ -340,12 +349,20 @@ private fun AccountScreen(
           if (!errorText.isNullOrBlank()) {
             ErrorCard(text = errorText)
           }
+          if (!serverTestMessage.isNullOrBlank()) {
+            InfoCard(text = serverTestMessage)
+          }
           ServerPicker(
             servers = serverOptions,
             selectedUrl = selectedServer,
             onSelected = { selectedServer = it },
             onAddServer = { showAddServer = true },
           )
+          Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedButton(onClick = { onTestServer(selectedServer) }) {
+              Text(stringResource(R.string.action_test_connection))
+            }
+          }
           Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             TextButton(onClick = { isLogin = false }) {
               Text(stringResource(R.string.action_register))
@@ -1794,11 +1811,7 @@ private fun formatServerLabel(raw: String, fallback: String): String {
 private fun normalizeServerUrl(raw: String): String {
   val trimmed = raw.trim().removeSuffix("/")
   if (trimmed.isBlank()) return DEFAULT_SERVER_URL
-  return if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    trimmed
-  } else {
-    "http://$trimmed"
-  }
+  return normalizeServerBaseUrl(trimmed)
 }
 
 private fun openExternalUrl(context: Context, url: String) {

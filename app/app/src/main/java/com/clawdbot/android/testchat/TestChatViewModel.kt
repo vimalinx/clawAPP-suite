@@ -14,8 +14,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
+import okhttp3.Protocol
 import okhttp3.Response
 import okhttp3.sse.EventSource
 import okhttp3.sse.EventSourceListener
@@ -53,6 +55,7 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
         .readTimeout(0, TimeUnit.MILLISECONDS)
         .callTimeout(0, TimeUnit.MILLISECONDS)
         .retryOnConnectionFailure(true)
+        .protocols(listOf(Protocol.HTTP_1_1))
         .build(),
     )
   private val prefs = TestChatPrefs(app)
@@ -71,6 +74,7 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
   private val _isInForeground = MutableStateFlow(true)
   private val _tokenUsage = MutableStateFlow<Map<String, TestChatTokenUsage>>(emptyMap())
   private val _serverConfig = MutableStateFlow(TestServerConfigState())
+  private val _serverTestMessage = MutableStateFlow<String?>(null)
 
   private val hostStates = mutableMapOf<String, TestChatConnectionState>()
   private val hostStreams = mutableMapOf<String, HostStreamState>()
@@ -122,6 +126,7 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
   val languageTag: StateFlow<String> = _languageTag
   val disclaimerAccepted: StateFlow<Boolean> = _disclaimerAccepted
   val serverConfig: StateFlow<TestServerConfigState> = _serverConfig
+  val serverTestMessage: StateFlow<String?> = _serverTestMessage
 
   init {
     val account = _account.value
@@ -295,10 +300,18 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
     _errorText.value = null
     viewModelScope.launch {
       val response =
-        runCatching { client.requestToken(account.serverUrl, account.userId, password) }
+        runCatching {
+          withTimeout(15_000L) {
+            client.requestToken(account.serverUrl, account.userId, password)
+          }
+        }
           .getOrElse {
             _errorText.value =
-              appString(R.string.error_token_request_failed_detail, it.message ?: "")
+              if (it is kotlinx.coroutines.TimeoutCancellationException) {
+                appString(R.string.error_token_request_timeout)
+              } else {
+                appString(R.string.error_token_request_failed_detail, it.message ?: "")
+              }
             return@launch
           }
       val token = response.token?.trim().orEmpty()
@@ -351,6 +364,38 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
     if (_disclaimerAccepted.value) return
     prefs.saveDisclaimerAccepted()
     _disclaimerAccepted.value = true
+  }
+
+  fun clearServerTestMessage() {
+    _serverTestMessage.value = null
+  }
+
+  fun testServerConnection(serverUrl: String) {
+    val normalizedServer = client.normalizeBaseUrl(serverUrl)
+    _serverTestMessage.value = null
+    _errorText.value = null
+    viewModelScope.launch {
+      val response =
+        runCatching {
+          withTimeout(10_000L) {
+            client.fetchPublicConfig(normalizedServer)
+          }
+        }
+          .getOrElse {
+            _errorText.value =
+              if (it is kotlinx.coroutines.TimeoutCancellationException) {
+                appString(R.string.error_server_test_timeout)
+              } else {
+                appString(R.string.error_server_test_failed_detail, it.message ?: "")
+              }
+            return@launch
+          }
+      if (response.ok == true) {
+        _serverTestMessage.value = appString(R.string.info_server_test_ok)
+      } else {
+        _errorText.value = response.error ?: appString(R.string.error_server_test_failed)
+      }
+    }
   }
 
   private suspend fun verifyAccountLogin(account: TestChatAccount, password: String): Boolean {

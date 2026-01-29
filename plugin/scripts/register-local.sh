@@ -172,11 +172,12 @@ if not isinstance(plugins, dict):
 entries = plugins.get("entries")
 if not isinstance(entries, dict):
   entries = {}
-test_entry = entries.get("vimalinx-server-plugin")
+entries.pop("vimalinx-server-plugin", None)
+test_entry = entries.get("test")
 if not isinstance(test_entry, dict):
   test_entry = {}
 test_entry["enabled"] = True
-entries["vimalinx-server-plugin"] = test_entry
+entries["test"] = test_entry
 plugins["entries"] = entries
 config["plugins"] = plugins
 
