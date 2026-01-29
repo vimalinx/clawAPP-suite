@@ -1,4 +1,4 @@
-import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -10,6 +10,7 @@ const port = Number.parseInt(process.env.TEST_SERVER_PORT ?? "8788", 10);
 const gatewayUrl = process.env.TEST_GATEWAY_URL?.trim();
 const gatewayToken = process.env.TEST_GATEWAY_TOKEN?.trim();
 const serverToken = process.env.TEST_SERVER_TOKEN?.trim();
+const bindHost = process.env.TEST_BIND_HOST?.trim() || "0.0.0.0";
 const usersFilePath = process.env.TEST_USERS_FILE?.trim();
 const usersInline = process.env.TEST_USERS?.trim();
 const defaultUserId = process.env.TEST_DEFAULT_USER_ID?.trim();
@@ -21,11 +22,21 @@ const hmacSecret = process.env.TEST_HMAC_SECRET?.trim();
 const requireSignature = (process.env.TEST_REQUIRE_SIGNATURE ?? "").trim().toLowerCase();
 const signatureRequired = requireSignature ? requireSignature === "true" : Boolean(hmacSecret);
 const signatureTtlMs = Number.parseInt(process.env.TEST_SIGNATURE_TTL_MS ?? "300000", 10);
+const secretKey = process.env.TEST_SECRET_KEY?.trim() || "";
+const hasSecretKey = secretKey.length >= 16;
+const trustProxy = (process.env.TEST_TRUST_PROXY ?? "").trim().toLowerCase() === "true";
+const rateLimitEnabled = (process.env.TEST_RATE_LIMIT ?? "true").trim().toLowerCase() !== "false";
 const inviteCodes = normalizeInviteCodes(
   process.env.TEST_INVITE_CODES ?? process.env.TEST_INVITE_CODE ?? "",
 );
 
 const users = new Map();
+let didMigrateUsers = false;
+let pendingUsersSave = null;
+
+if (!hasSecretKey) {
+  console.log("warning: TEST_SECRET_KEY not set; token hashing is disabled.");
+}
 
 function normalizeToken(value) {
   const trimmed = value?.trim();
@@ -36,12 +47,74 @@ function normalizeTokens(values) {
   const tokens = [];
   const seen = new Set();
   for (const value of values) {
-    const normalized = normalizeToken(value);
+    const normalized = normalizeTokenHash(value);
     if (!normalized || seen.has(normalized)) continue;
     seen.add(normalized);
     tokens.push(normalized);
   }
   return tokens;
+}
+
+const TOKEN_HASH_PREFIX = "hmac$";
+const PASSWORD_HASH_PREFIX = "scrypt$";
+const SCRYPT_N = Number.parseInt(process.env.TEST_SCRYPT_N ?? "16384", 10);
+const SCRYPT_R = Number.parseInt(process.env.TEST_SCRYPT_R ?? "8", 10);
+const SCRYPT_P = Number.parseInt(process.env.TEST_SCRYPT_P ?? "1", 10);
+const SCRYPT_KEY_LEN = Number.parseInt(process.env.TEST_SCRYPT_KEY_LEN ?? "64", 10);
+
+function isTokenHash(value) {
+  return value.startsWith(TOKEN_HASH_PREFIX);
+}
+
+function hashToken(value) {
+  if (!hasSecretKey) return value;
+  const digest = createHmac("sha256", secretKey).update(value).digest("hex");
+  return `${TOKEN_HASH_PREFIX}${digest}`;
+}
+
+function normalizeTokenHash(value) {
+  const normalized = normalizeToken(value);
+  if (!normalized) return null;
+  if (!hasSecretKey) return normalized;
+  if (isTokenHash(normalized)) return normalized;
+  return hashToken(normalized);
+}
+
+function hashPassword(password) {
+  const salt = randomBytes(16).toString("hex");
+  const derived = scryptSync(password, salt, SCRYPT_KEY_LEN, {
+    N: SCRYPT_N,
+    r: SCRYPT_R,
+    p: SCRYPT_P,
+  }).toString("hex");
+  return `${PASSWORD_HASH_PREFIX}${SCRYPT_N}$${SCRYPT_R}$${SCRYPT_P}$${salt}$${derived}`;
+}
+
+function parsePasswordHash(raw) {
+  if (!raw.startsWith(PASSWORD_HASH_PREFIX)) return null;
+  const parts = raw.split("$");
+  if (parts.length !== 6) return null;
+  const n = Number.parseInt(parts[1] || "", 10);
+  const r = Number.parseInt(parts[2] || "", 10);
+  const p = Number.parseInt(parts[3] || "", 10);
+  const salt = parts[4] || "";
+  const hash = parts[5] || "";
+  if (!Number.isFinite(n) || !Number.isFinite(r) || !Number.isFinite(p)) return null;
+  if (!salt || !hash) return null;
+  return { n, r, p, salt, hash };
+}
+
+function verifyPassword(password, rawHash) {
+  const parsed = parsePasswordHash(rawHash);
+  if (!parsed) return false;
+  const keyLen = Math.max(1, Math.floor(parsed.hash.length / 2));
+  const derived = scryptSync(password, parsed.salt, keyLen, {
+    N: parsed.n,
+    r: parsed.r,
+    p: parsed.p,
+  }).toString("hex");
+  if (derived.length !== parsed.hash.length) return false;
+  return timingSafeEqual(Buffer.from(derived, "utf-8"), Buffer.from(parsed.hash, "utf-8"));
 }
 
 function normalizeUsageNumber(value) {
@@ -53,7 +126,7 @@ function normalizeTokenUsage(raw, tokens) {
   const usage = {};
   if (raw) {
     for (const [key, entry] of Object.entries(raw)) {
-      const token = normalizeToken(entry?.token ?? key);
+      const token = normalizeTokenHash(entry?.token ?? key);
       if (!token) continue;
       usage[token] = {
         token,
@@ -92,18 +165,36 @@ function isInviteCodeValid(code) {
 function normalizeUserRecord(entry) {
   const id = entry.id?.trim();
   if (!id) return null;
-  const tokens = normalizeTokens([entry.token, ...(entry.tokens ?? [])]);
-  const password = entry.password?.trim() || void 0;
+  let migrated = false;
+  const rawTokens = [entry.token, ...(entry.tokens ?? [])];
+  if (hasSecretKey) {
+    for (const raw of rawTokens) {
+      if (raw && !isTokenHash(raw.trim())) {
+        migrated = true;
+        break;
+      }
+    }
+  }
+  const tokens = normalizeTokens(rawTokens);
+  let passwordHash = entry.passwordHash?.trim() || void 0;
+  let password = entry.password?.trim() || void 0;
+  if (!passwordHash && password) {
+    passwordHash = hashPassword(password);
+    password = void 0;
+    migrated = true;
+  }
   const displayName = entry.displayName?.trim() || void 0;
   const gatewayUrl = entry.gatewayUrl?.trim() || void 0;
   const gatewayToken = entry.gatewayToken?.trim() || void 0;
   const tokenUsage = normalizeTokenUsage(entry.tokenUsage, tokens);
+  if (migrated) didMigrateUsers = true;
   return {
     ...entry,
     id,
     token: tokens[0],
     tokens,
     password,
+    passwordHash,
     displayName,
     gatewayUrl,
     gatewayToken,
@@ -133,6 +224,9 @@ function loadUsers() {
   }
   if (defaultUserId && defaultUserToken) {
     addUser({ id: defaultUserId, token: defaultUserToken });
+  }
+  if (didMigrateUsers) {
+    scheduleUsersSave();
   }
 }
 
@@ -176,16 +270,19 @@ function resolveUserTokens(entry) {
 }
 
 function hasUserToken(entry, token) {
-  if (!token) return false;
-  return resolveUserTokens(entry).includes(token.trim());
+  const normalized = normalizeTokenHash(token);
+  if (!normalized) return false;
+  return resolveUserTokens(entry).includes(normalized);
 }
 
 function addUserToken(entry, token) {
   const tokens = resolveUserTokens(entry);
-  if (!tokens.includes(token)) tokens.push(token);
+  const tokenHash = normalizeTokenHash(token);
+  if (!tokenHash) return;
+  if (!tokens.includes(tokenHash)) tokens.push(tokenHash);
   entry.tokens = tokens;
-  if (!entry.token) entry.token = token;
-  updateTokenUsage(entry, token, { createdAt: Date.now(), lastSeenAt: Date.now() });
+  if (!entry.token) entry.token = tokenHash;
+  updateTokenUsage(entry, tokenHash, { createdAt: Date.now(), lastSeenAt: Date.now() });
 }
 
 function serializeUserRecord(entry) {
@@ -195,6 +292,7 @@ function serializeUserRecord(entry) {
     ...entry,
     token: tokens[0],
     tokens,
+    password: void 0,
     tokenUsage,
   };
 }
@@ -207,8 +305,6 @@ function saveUsersSnapshot(entries) {
   const data = JSON.stringify({ users: entries.map(serializeUserRecord) }, null, 2);
   writeFileSync(usersWritePath, data, "utf-8");
 }
-
-let pendingUsersSave = null;
 
 function scheduleUsersSave() {
   if (!usersWritePath) return;
@@ -225,7 +321,7 @@ function scheduleUsersSave() {
 }
 
 function ensureTokenUsage(entry, token) {
-  const normalized = normalizeToken(token);
+  const normalized = normalizeTokenHash(token);
   if (!normalized) return null;
   const usage = normalizeTokenUsage(entry.tokenUsage, resolveUserTokens(entry));
   const existing = usage[normalized];
@@ -324,9 +420,9 @@ function verifySignature(params) {
 }
 
 function readSignatureHeaders(req) {
-  const timestampRaw = String(req.headers["x-vimalinx-timestamp"] ?? "").trim();
-  const nonce = String(req.headers["x-vimalinx-nonce"] ?? "").trim();
-  const signature = String(req.headers["x-vimalinx-signature"] ?? "").trim();
+  const timestampRaw = String(req.headers["x-test-timestamp"] ?? "").trim();
+  const nonce = String(req.headers["x-test-nonce"] ?? "").trim();
+  const signature = String(req.headers["x-test-signature"] ?? "").trim();
   const timestamp = Number(timestampRaw);
   return {
     timestamp: Number.isFinite(timestamp) ? timestamp : null,
@@ -374,6 +470,29 @@ function verifySignedRequest(params) {
   return ok ? null : "invalid signature";
 }
 
+const rateLimits = new Map();
+
+function resolveClientIp(req) {
+  if (trustProxy) {
+    const forwarded = String(req.headers["x-forwarded-for"] ?? "").trim();
+    if (forwarded) return forwarded.split(",")[0]?.trim() || "unknown";
+  }
+  return req.socket.remoteAddress ?? "unknown";
+}
+
+function checkRateLimit(key, limit, windowMs) {
+  if (!rateLimitEnabled) return true;
+  const now = Date.now();
+  const entry = rateLimits.get(key);
+  if (!entry || entry.resetAt <= now) {
+    rateLimits.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  entry.count += 1;
+  rateLimits.set(key, entry);
+  return entry.count <= limit;
+}
+
 function getUser(userId, token) {
   if (!userId || !token) return null;
   const entry = users.get(userId);
@@ -384,8 +503,17 @@ function getUser(userId, token) {
 function getUserByPassword(userId, password) {
   if (!userId || !password) return null;
   const entry = users.get(userId);
-  if (!entry || !entry.password) return null;
-  return entry.password === password ? entry : null;
+  if (!entry) return null;
+  if (entry.passwordHash) {
+    return verifyPassword(password, entry.passwordHash) ? entry : null;
+  }
+  if (entry.password && entry.password === password) {
+    entry.passwordHash = hashPassword(password);
+    entry.password = void 0;
+    scheduleUsersSave();
+    return entry;
+  }
+  return null;
 }
 
 function getUserByToken(token) {
@@ -400,16 +528,17 @@ function resolveAuthMatch({ userId, secret, allowPassword }) {
   const id = userId?.trim();
   const value = secret?.trim();
   if (!value) return null;
+  const tokenHash = normalizeTokenHash(value);
   if (id) {
     const tokenMatch = getUser(id, value);
-    if (tokenMatch) return { user: tokenMatch, secret: value, kind: "token" };
+    if (tokenMatch && tokenHash) return { user: tokenMatch, secret: tokenHash, kind: "token" };
     if (allowPassword) {
       const passwordMatch = getUserByPassword(id, value);
       if (passwordMatch) return { user: passwordMatch, secret: value, kind: "password" };
     }
   }
   const tokenMatch = getUserByToken(value);
-  if (tokenMatch) return { user: tokenMatch, secret: value, kind: "token" };
+  if (tokenMatch && tokenHash) return { user: tokenMatch, secret: tokenHash, kind: "token" };
   return null;
 }
 
@@ -430,7 +559,7 @@ function extractUserIdFromChatId(chatId) {
   if (!chatId) return null;
   const trimmed = chatId.trim();
   if (trimmed.startsWith("user:")) return trimmed.slice("user:".length).trim();
-  if (trimmed.startsWith("vimalinx:")) return trimmed.slice("vimalinx:".length).trim();
+  if (trimmed.startsWith("test:")) return trimmed.slice("test:".length).trim();
   return trimmed || null;
 }
 
@@ -641,9 +770,9 @@ async function forwardToGateway(message, user) {
     const timestamp = Date.now();
     const nonce = randomUUID();
     const signature = createSignature({ secret: hmacSecret, timestamp, nonce, body });
-    headers["x-vimalinx-timestamp"] = String(timestamp);
-    headers["x-vimalinx-nonce"] = nonce;
-    headers["x-vimalinx-signature"] = signature;
+    headers["x-test-timestamp"] = String(timestamp);
+    headers["x-test-nonce"] = nonce;
+    headers["x-test-signature"] = signature;
   }
 
   const res = await fetch(targetUrl, {
@@ -666,7 +795,7 @@ function readBearerToken(req) {
 }
 
 function readUserIdHeader(req) {
-  return String(req.headers["x-vimalinx-user"] ?? "").trim();
+  return String(req.headers["x-test-user"] ?? "").trim();
 }
 
 function verifyServerToken(req, user) {
@@ -701,6 +830,15 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === "GET" && url.pathname === "/api/config") {
+    sendJson(res, 200, {
+      ok: true,
+      inviteRequired: inviteCodes.length > 0,
+      allowRegistration,
+    });
+    return;
+  }
+
   if (req.method === "GET" && url.pathname === "/") {
     serveFile(res, resolve(publicDir, "index.html"));
     return;
@@ -730,6 +868,11 @@ const server = createServer(async (req, res) => {
   if (req.method === "POST" && url.pathname === "/api/register") {
     if (!allowRegistration) {
       sendJson(res, 403, { error: "registration disabled" });
+      return;
+    }
+    const clientId = resolveClientIp(req);
+    if (!checkRateLimit(`register:${clientId}`, 10, 10 * 60 * 1000)) {
+      sendJson(res, 429, { error: "rate limited" });
       return;
     }
     const raw = await readBody(req, 1024 * 1024).catch((err) => {
@@ -770,7 +913,7 @@ const server = createServer(async (req, res) => {
     }
     const entry = {
       id: finalId,
-      password,
+      passwordHash: hashPassword(password),
       displayName: displayName || undefined,
     };
     try {
@@ -789,6 +932,11 @@ const server = createServer(async (req, res) => {
   }
 
   if (req.method === "POST" && url.pathname === "/api/account/login") {
+    const clientId = resolveClientIp(req);
+    if (!checkRateLimit(`account-login:${clientId}`, 30, 60 * 1000)) {
+      sendJson(res, 429, { error: "rate limited" });
+      return;
+    }
     const raw = await readBody(req, 1024 * 1024).catch((err) => {
       sendJson(res, 413, { error: err.message });
       return null;
@@ -801,8 +949,8 @@ const server = createServer(async (req, res) => {
       sendJson(res, 400, { error: "userId and password required" });
       return;
     }
-    const user = users.get(userId);
-    if (!user || !user.password || user.password !== password) {
+    const user = getUserByPassword(userId, password);
+    if (!user) {
       sendJson(res, 401, { error: "unauthorized" });
       return;
     }
@@ -815,6 +963,11 @@ const server = createServer(async (req, res) => {
   }
 
   if (req.method === "POST" && url.pathname === "/api/token") {
+    const clientId = resolveClientIp(req);
+    if (!checkRateLimit(`token:${clientId}`, 30, 60 * 1000)) {
+      sendJson(res, 429, { error: "rate limited" });
+      return;
+    }
     const raw = await readBody(req, 1024 * 1024).catch((err) => {
       sendJson(res, 413, { error: err.message });
       return null;
@@ -827,8 +980,8 @@ const server = createServer(async (req, res) => {
       sendJson(res, 400, { error: "userId and password required" });
       return;
     }
-    const user = users.get(userId);
-    if (!user || !user.password || user.password !== password) {
+    const user = getUserByPassword(userId, password);
+    if (!user) {
       sendJson(res, 401, { error: "unauthorized" });
       return;
     }
@@ -853,6 +1006,11 @@ const server = createServer(async (req, res) => {
   }
 
   if (req.method === "POST" && url.pathname === "/api/token/usage") {
+    const clientId = resolveClientIp(req);
+    if (!checkRateLimit(`token-usage:${clientId}`, 60, 60 * 1000)) {
+      sendJson(res, 429, { error: "rate limited" });
+      return;
+    }
     const raw = await readBody(req, 1024 * 1024).catch((err) => {
       sendJson(res, 413, { error: err.message });
       return null;
@@ -865,8 +1023,8 @@ const server = createServer(async (req, res) => {
       sendJson(res, 400, { error: "userId and password required" });
       return;
     }
-    const user = users.get(userId);
-    if (!user || !user.password || user.password !== password) {
+    const user = getUserByPassword(userId, password);
+    if (!user) {
       sendJson(res, 401, { error: "unauthorized" });
       return;
     }
@@ -880,6 +1038,11 @@ const server = createServer(async (req, res) => {
   }
 
   if (req.method === "POST" && url.pathname === "/api/login") {
+    const clientId = resolveClientIp(req);
+    if (!checkRateLimit(`login:${clientId}`, 60, 60 * 1000)) {
+      sendJson(res, 429, { error: "rate limited" });
+      return;
+    }
     const raw = await readBody(req, 1024 * 1024).catch((err) => {
       sendJson(res, 413, { error: err.message });
       return null;
@@ -888,6 +1051,11 @@ const server = createServer(async (req, res) => {
     const payload = parseJson(raw);
     const token = payload?.token?.trim();
     if (!token) {
+      sendJson(res, 400, { error: "token required" });
+      return;
+    }
+    const tokenHash = normalizeTokenHash(token);
+    if (!tokenHash) {
       sendJson(res, 400, { error: "token required" });
       return;
     }
@@ -906,7 +1074,7 @@ const server = createServer(async (req, res) => {
         return;
       }
     }
-    updateTokenUsage(user, token, { lastSeenAt: Date.now() });
+    updateTokenUsage(user, tokenHash, { lastSeenAt: Date.now() });
     sendJson(res, 200, {
       ok: true,
       userId: user.id,
@@ -1042,11 +1210,11 @@ const server = createServer(async (req, res) => {
   sendText(res, 404, "Not Found");
 });
 
-server.listen(Number.isFinite(port) ? port : 8788, () => {
+server.listen(Number.isFinite(port) ? port : 8788, bindHost, () => {
   const usersCount = users.size;
   const location = Number.isFinite(port) ? port : 8788;
   // eslint-disable-next-line no-console
-  console.log(`Vimalinx Server listening on http://0.0.0.0:${location}`);
+  console.log(`Vimalinx Server listening on http://${bindHost}:${location}`);
   // eslint-disable-next-line no-console
   console.log(`inbound mode: ${inboundMode}`);
   if (!gatewayUrl && inboundMode === "webhook") {
