@@ -42,34 +42,6 @@ By default it runs: doctor --fix, gateway stop/start, channels status --probe (w
 Skip with: VIMALINX_SKIP_DOCTOR_FIX=1 / VIMALINX_SKIP_GATEWAY_START=1 / VIMALINX_SKIP_STATUS=1.
 To overwrite an existing install: `VIMALINX_FORCE_OVERWRITE=1 ./install.sh`.
 
-Or install manually:
-
-```bash
-clawdbot plugins install ./plugin
-clawdbot onboard
-```
-
-## Offline plugin release (for customers)
-
-Create the offline package:
-
-```bash
-./plugin/scripts/pack-release.sh
-```
-
-Customer install:
-
-```bash
-tar -xzf vimalinx-server-plugin-*.tgz
-./package/scripts/install.sh
-```
-
-Verify:
-
-```bash
-clawdbot channels status --probe
-```
-
 ## Android app (Vimagram)
 
 ```bash

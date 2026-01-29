@@ -42,34 +42,6 @@ clawdbot gateway --port 18789 --verbose
 如需跳过，可设置：VIMALINX_SKIP_DOCTOR_FIX=1 / VIMALINX_SKIP_GATEWAY_START=1 / VIMALINX_SKIP_STATUS=1。
 如需覆盖已安装插件，可设置：`VIMALINX_FORCE_OVERWRITE=1 ./install.sh`。
 
-或手动安装并配置插件：
-
-```bash
-clawdbot plugins install ./plugin
-clawdbot onboard
-```
-
-## 插件离线发布（给客户）
-
-打包离线安装包：
-
-```bash
-./plugin/scripts/pack-release.sh
-```
-
-客户安装：
-
-```bash
-tar -xzf vimalinx-server-plugin-*.tgz
-./package/scripts/install.sh
-```
-
-验证：
-
-```bash
-clawdbot channels status --probe
-```
-
 ## Android App（Vimagram）
 
 ```bash
