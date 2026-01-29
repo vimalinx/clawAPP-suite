@@ -12,6 +12,12 @@ webhook inbound modes and token-based auth.
 
 ## Install
 
+Simplest (customers): clone the repo and run at the root:
+
+```bash
+./install.sh
+```
+
 From npm (recommended for releases):
 
 ```bash
