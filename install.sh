@@ -3,7 +3,7 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_DIR="${REPO_DIR}/plugin"
-TARGET_DIR="${VIMALINX_PLUGIN_DIR:-$HOME/.clawdbot/extensions/vimalinx-server-plugin}"
+TARGET_DIR="${VIMALINX_PLUGIN_DIR:-$HOME/.clawdbot/extensions/vimalinx}"
 CONFIG_PATH="${CLAWDBOT_CONFIG:-$HOME/.clawdbot/clawdbot.json}"
 DEFAULT_SERVER_URL="http://123.60.21.129:8788"
 SERVER_URL="${VIMALINX_SERVER_URL:-}"
@@ -25,7 +25,7 @@ fi
 
 echo "Installing Vimalinx Server plugin to: ${TARGET_DIR}"
 if [[ -d "${TARGET_DIR}" ]]; then
-  if [[ "${TARGET_DIR}" == "${HOME}/.clawdbot/extensions/vimalinx-server-plugin" || "${VIMALINX_FORCE_OVERWRITE:-}" == "1" ]]; then
+if [[ "${TARGET_DIR}" == "${HOME}/.clawdbot/extensions/vimalinx" || "${VIMALINX_FORCE_OVERWRITE:-}" == "1" ]]; then
     rm -rf "${TARGET_DIR}"
   else
     echo "Target already exists: ${TARGET_DIR}" >&2
@@ -41,7 +41,7 @@ else
 fi
 
 # Plugins are loaded from ~/.clawdbot/extensions, so no install step needed.
-clawdbot plugins enable vimalinx-server-plugin >/dev/null 2>&1 || true
+clawdbot plugins enable vimalinx >/dev/null 2>&1 || true
 
 if [[ -z "${SERVER_URL}" ]]; then
   read -r -p "Vimalinx Server URL [${DEFAULT_SERVER_URL}]: " SERVER_URL
@@ -125,14 +125,14 @@ entries = plugins.get("entries")
 if not isinstance(entries, dict):
   entries = {}
 entries.pop("test", None)
-entries["vimalinx-server-plugin"] = {**entries.get("vimalinx-server-plugin", {}), "enabled": True}
+entries["vimalinx"] = {**entries.get("vimalinx", {}), "enabled": True}
 plugins["entries"] = entries
 
 load = plugins.get("load")
 if isinstance(load, dict):
   paths = load.get("paths")
   if isinstance(paths, list):
-    filtered = [p for p in paths if "vimalinx-server-plugin" not in str(p) and "vimalinx-suite-core" not in str(p)]
+    filtered = [p for p in paths if "vimalinx" not in str(p) and "vimalinx-suite-core" not in str(p)]
     if filtered:
       load["paths"] = filtered
       plugins["load"] = load

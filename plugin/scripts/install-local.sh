@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-TARGET_DIR="${TEST_PLUGIN_DIR:-$HOME/.clawdbot/extensions/vimalinx-server-plugin}"
+TARGET_DIR="${TEST_PLUGIN_DIR:-$HOME/.clawdbot/extensions/vimalinx}"
 
 if ! command -v clawdbot >/dev/null 2>&1; then
   echo "clawdbot not found in PATH. Install the official package first." >&2
