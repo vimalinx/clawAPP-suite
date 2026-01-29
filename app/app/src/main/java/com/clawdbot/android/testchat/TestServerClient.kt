@@ -76,6 +76,14 @@ data class TestServerHealthResponse(
 )
 
 @Serializable
+data class TestServerConfigResponse(
+  val ok: Boolean? = null,
+  val inviteRequired: Boolean? = null,
+  val allowRegistration: Boolean? = null,
+  val error: String? = null,
+)
+
+@Serializable
 data class TestServerRegisterPayload(
   val userId: String,
   val inviteCode: String,
@@ -295,6 +303,27 @@ class TestServerClient(
             ?: TestServerHealthResponse(ok = false, error = "HTTP ${response.code}")
         }
         parsed ?: TestServerHealthResponse(ok = false, error = "Invalid response")
+      }
+    }
+  }
+
+  suspend fun fetchServerConfig(serverUrl: String): TestServerConfigResponse {
+    val request =
+      Request.Builder()
+        .url("${normalizeBaseUrl(serverUrl)}/api/config")
+        .get()
+        .build()
+    return withContext(Dispatchers.IO) {
+      client.newCall(request).execute().use { response ->
+        val raw = response.body?.string() ?: ""
+        val parsed =
+          runCatching { json.decodeFromString(TestServerConfigResponse.serializer(), raw) }
+            .getOrNull()
+        if (!response.isSuccessful) {
+          return@use parsed?.copy(ok = false, error = parsed.error ?: "HTTP ${response.code}")
+            ?: TestServerConfigResponse(ok = false, error = "HTTP ${response.code}")
+        }
+        parsed ?: TestServerConfigResponse(ok = false, error = "Invalid response")
       }
     }
   }

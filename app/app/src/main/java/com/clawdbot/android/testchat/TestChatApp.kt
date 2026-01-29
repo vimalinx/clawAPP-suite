@@ -130,6 +130,7 @@ fun TestChatApp(viewModel: TestChatViewModel) {
     if (!state.isAuthenticated) {
       AccountScreen(
         errorText = state.errorText,
+        inviteRequired = state.inviteRequired,
         serverTestMessage = state.serverTestMessage,
         serverTestSuccess = state.serverTestSuccess,
         serverTestInProgress = state.serverTestInProgress,
@@ -143,6 +144,7 @@ fun TestChatApp(viewModel: TestChatViewModel) {
         onLogin = viewModel::loginAccount,
         onTestServer = viewModel::testServerConnection,
         onClearServerTest = viewModel::clearServerTestStatus,
+        onFetchServerConfig = viewModel::fetchServerConfig,
       )
     } else if (state.activeChatId != null) {
       ChatScreen(
@@ -235,6 +237,7 @@ private enum class MainTab {
 @Composable
 private fun AccountScreen(
   errorText: String?,
+  inviteRequired: Boolean?,
   serverTestMessage: String?,
   serverTestSuccess: Boolean?,
   serverTestInProgress: Boolean,
@@ -244,6 +247,7 @@ private fun AccountScreen(
   onLogin: (serverUrl: String, userId: String, password: String) -> Unit,
   onTestServer: (serverUrl: String) -> Unit,
   onClearServerTest: () -> Unit,
+  onFetchServerConfig: (serverUrl: String) -> Unit,
 ) {
   val serverOptions = remember {
     mutableStateListOf(
@@ -268,6 +272,7 @@ private fun AccountScreen(
 
   LaunchedEffect(selectedServer) {
     onClearServerTest()
+    onFetchServerConfig(selectedServer)
     if (selectedServer.isNotBlank() && serverOptions.none { it.url == selectedServer }) {
       serverOptions.add(
         ServerOption(
@@ -397,13 +402,24 @@ private fun AccountScreen(
               singleLine = true,
               colors = textFieldColors(),
             )
-            TextField(
-              value = inviteCode,
-              onValueChange = { inviteCode = it },
-              label = { Text(stringResource(R.string.label_invite_code)) },
-              singleLine = true,
-              colors = textFieldColors(),
-            )
+          val inviteIsRequired = inviteRequired == true
+          TextField(
+            value = inviteCode,
+            onValueChange = { inviteCode = it },
+            label = {
+              Text(
+                stringResource(
+                  if (inviteIsRequired) {
+                    R.string.label_invite_code
+                  } else {
+                    R.string.label_invite_code_optional
+                  },
+                ),
+              )
+            },
+            singleLine = true,
+            colors = textFieldColors(),
+          )
             TextField(
               value = registerPassword,
               onValueChange = { registerPassword = it },
@@ -416,7 +432,9 @@ private fun AccountScreen(
               onClick = { onRegister(selectedServer, registerUserId, inviteCode, registerPassword) },
               modifier = Modifier.fillMaxWidth(),
               enabled =
-                registerUserId.isNotBlank() && inviteCode.isNotBlank() && registerPassword.isNotBlank(),
+                registerUserId.isNotBlank() &&
+                  registerPassword.isNotBlank() &&
+                  (!inviteIsRequired || inviteCode.isNotBlank()),
             ) {
               Text(stringResource(R.string.action_register))
             }

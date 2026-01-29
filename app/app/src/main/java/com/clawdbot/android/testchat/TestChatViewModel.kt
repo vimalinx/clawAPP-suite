@@ -28,6 +28,7 @@ data class TestChatUiState(
   val isAuthenticated: Boolean = false,
   val connectionState: TestChatConnectionState = TestChatConnectionState.Disconnected,
   val errorText: String? = null,
+  val inviteRequired: Boolean? = null,
   val serverTestMessage: String? = null,
   val serverTestSuccess: Boolean? = null,
   val serverTestInProgress: Boolean = false,
@@ -65,6 +66,7 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
   private val _activeChatId = MutableStateFlow<String?>(null)
   private val _isInForeground = MutableStateFlow(true)
   private val _tokenUsage = MutableStateFlow<Map<String, TestChatTokenUsage>>(emptyMap())
+  private val _inviteRequired = MutableStateFlow<Boolean?>(null)
   private val _serverTestMessage = MutableStateFlow<String?>(null)
   private val _serverTestSuccess = MutableStateFlow<Boolean?>(null)
   private val _serverTestInProgress = MutableStateFlow(false)
@@ -93,10 +95,11 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
     combine(
       baseUiState,
       _tokenUsage,
+      _inviteRequired,
       _serverTestMessage,
       _serverTestSuccess,
       _serverTestInProgress,
-    ) { base, tokenUsage, serverTestMessage, serverTestSuccess, serverTestInProgress ->
+    ) { base, tokenUsage, inviteRequired, serverTestMessage, serverTestSuccess, serverTestInProgress ->
       val (account, hosts, password) = base.auth
       val sortedThreads =
         base.snapshot.threads.sortedByDescending { thread -> thread.lastTimestampMs }
@@ -116,6 +119,7 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
         isAuthenticated = isAuthenticated,
         connectionState = base.connectionState,
         errorText = base.errorText,
+        inviteRequired = inviteRequired,
         serverTestMessage = serverTestMessage,
         serverTestSuccess = serverTestSuccess,
         serverTestInProgress = serverTestInProgress,
@@ -157,7 +161,12 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
     val normalizedUser = userId.trim()
     val normalizedInvite = inviteCode.trim()
     val normalizedPassword = password.trim()
-    if (normalizedUser.isBlank() || normalizedInvite.isBlank() || normalizedPassword.length < 6) {
+    val inviteRequired = _inviteRequired.value == true
+    if (
+      normalizedUser.isBlank() ||
+        (inviteRequired && normalizedInvite.isBlank()) ||
+        normalizedPassword.length < 6
+    ) {
       _errorText.value = appString(R.string.error_register_required)
       return
     }
@@ -333,6 +342,21 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
         _serverTestSuccess.value = false
       }
       _serverTestInProgress.value = false
+    }
+  }
+
+  fun fetchServerConfig(serverUrl: String) {
+    val normalizedServer = client.normalizeBaseUrl(serverUrl)
+    if (normalizedServer.isBlank()) {
+      _inviteRequired.value = null
+      return
+    }
+    _inviteRequired.value = null
+    viewModelScope.launch {
+      val response =
+        runCatching { client.fetchServerConfig(normalizedServer) }
+          .getOrNull()
+      _inviteRequired.value = if (response?.ok == true) response.inviteRequired else null
     }
   }
 

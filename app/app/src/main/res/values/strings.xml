@@ -9,6 +9,7 @@
     <string name="label_user_id">User ID</string>
     <string name="label_password">Password</string>
     <string name="label_invite_code">Invite code</string>
+    <string name="label_invite_code_optional">Invite code (optional)</string>
     <string name="title_add_server">Add server</string>
     <string name="label_server_name">Server name</string>
     <string name="label_server_url">Server URL</string>

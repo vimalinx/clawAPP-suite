@@ -9,6 +9,7 @@
     <string name="label_user_id">用户 ID</string>
     <string name="label_password">密码</string>
     <string name="label_invite_code">邀请码</string>
+    <string name="label_invite_code_optional">邀请码（可选）</string>
     <string name="title_add_server">添加服务器</string>
     <string name="label_server_name">服务器名称</string>
     <string name="label_server_url">服务器地址</string>
