@@ -1,10 +1,14 @@
 package com.clawdbot.android.testchat
 
 import android.app.Application
+import android.os.Build
 import androidx.annotation.StringRes
-import com.clawdbot.android.R
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.clawdbot.android.BuildConfig
+import com.clawdbot.android.R
+import com.clawdbot.android.UpdateState
+import com.clawdbot.android.UpdateStatus
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Job
@@ -15,7 +19,12 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import okhttp3.OkHttpClient
+import okhttp3.Request
 import okhttp3.Response
 import okhttp3.sse.EventSource
 import okhttp3.sse.EventSourceListener
@@ -70,10 +79,12 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
   private val _serverTestMessage = MutableStateFlow<String?>(null)
   private val _serverTestSuccess = MutableStateFlow<Boolean?>(null)
   private val _serverTestInProgress = MutableStateFlow(false)
+  private val _updateState = MutableStateFlow(UpdateState())
 
   private val hostStates = mutableMapOf<String, TestChatConnectionState>()
   private val hostStreams = mutableMapOf<String, HostStreamState>()
   private var persistJob: Job? = null
+  private val updateClient = OkHttpClient()
 
   private val authState =
     combine(_account, _hosts, _password) { account, hosts, password ->
@@ -139,6 +150,7 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
         messages = messages,
       )
     }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, TestChatUiState())
+  val updateState: StateFlow<UpdateState> = _updateState
 
   val languageTag: StateFlow<String> = _languageTag
   val disclaimerAccepted: StateFlow<Boolean> = _disclaimerAccepted
@@ -322,6 +334,66 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
     if (_disclaimerAccepted.value) return
     prefs.saveDisclaimerAccepted()
     _disclaimerAccepted.value = true
+  }
+
+  fun checkForUpdates() {
+    val currentVersion = resolvedVersionName()
+    _updateState.value = UpdateState(status = UpdateStatus.Checking, currentVersion = currentVersion)
+
+    viewModelScope.launch {
+      val req =
+        Request.Builder()
+          .url("https://api.github.com/repos/vimalinx/vimalinx-suite-core/releases/latest")
+          .header("User-Agent", buildUserAgent())
+          .build()
+
+      val newState =
+        try {
+          updateClient.newCall(req).execute().use { resp ->
+            if (!resp.isSuccessful) {
+              return@use UpdateState(
+                status = UpdateStatus.Error,
+                currentVersion = currentVersion,
+                error = "HTTP ${resp.code}",
+              )
+            }
+
+            val bodyStr = resp.body?.string()?.trim().orEmpty()
+            if (bodyStr.isEmpty()) {
+              return@use UpdateState(status = UpdateStatus.Error, currentVersion = currentVersion, error = "empty body")
+            }
+
+            val root = json.parseToJsonElement(bodyStr).asObjectOrNull() ?: return@use UpdateState(
+              status = UpdateStatus.Error,
+              currentVersion = currentVersion,
+              error = "invalid json",
+            )
+
+            val tagRaw = root["tag_name"].asStringOrNull().orEmpty()
+            val name = root["name"].asStringOrNull().orEmpty()
+            val body = root["body"].asStringOrNull().orEmpty()
+            val htmlUrl = root["html_url"].asStringOrNull().orEmpty()
+
+            val normalizedRemote = normalizeVersion(tagRaw)
+            val normalizedCurrent = normalizeVersion(currentVersion)
+            val newer = isRemoteNewer(normalizedRemote, normalizedCurrent)
+
+            UpdateState(
+              status = UpdateStatus.Ready,
+              currentVersion = currentVersion,
+              latestTag = tagRaw,
+              latestName = name.ifBlank { tagRaw },
+              releaseNotes = body,
+              htmlUrl = htmlUrl,
+              isUpdateAvailable = newer,
+            )
+          }
+        } catch (err: Throwable) {
+          UpdateState(status = UpdateStatus.Error, currentVersion = currentVersion, error = err.message ?: "request failed")
+        }
+
+      _updateState.value = newState
+    }
   }
 
   fun testServerConnection(serverUrl: String) {
@@ -733,10 +805,11 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
             if (payload != null && text.isNullOrBlank()) return
             val output = text ?: data
             if (output.isBlank()) return
-            val messageId =
+            val rawMessageId =
               payload?.id?.trim().orEmpty()
                 .ifBlank { id?.trim().orEmpty() }
                 .ifBlank { UUID.randomUUID().toString() }
+            val messageId = "${normalizeHostLabel(host.label)}:${rawMessageId}"
             val eventId = id?.toLongOrNull() ?: payload?.id?.toLongOrNull()
             if (eventId != null) {
               prefs.saveLastEventId(host.label, eventId)
@@ -1066,6 +1139,60 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
     }
     tokens += (asciiRun + 3) / 4
     return tokens
+  }
+
+  private fun JsonElement?.asObjectOrNull(): JsonObject? = this as? JsonObject
+
+  private fun JsonElement?.asStringOrNull(): String? =
+    when (this) {
+      is JsonNull -> null
+      is JsonPrimitive -> content
+      else -> null
+    }
+
+  private fun resolvedVersionName(): String {
+    val versionName = BuildConfig.VERSION_NAME.trim().ifEmpty { "dev" }
+    return if (BuildConfig.DEBUG && !versionName.contains("dev", ignoreCase = true)) {
+      "${'$'}versionName-dev"
+    } else {
+      versionName
+    }
+  }
+
+  private fun buildUserAgent(): String {
+    val version = resolvedVersionName()
+    val release = Build.VERSION.RELEASE?.trim().orEmpty()
+    val releaseLabel = if (release.isEmpty()) "unknown" else release
+    return "ClawdbotAndroid/${'$'}version (Android ${'$'}releaseLabel; SDK ${'$'}{Build.VERSION.SDK_INT})"
+  }
+
+  private fun normalizeVersion(raw: String?): String {
+    return raw?.trim()?.removePrefix("v")?.removePrefix("V")?.trim().orEmpty()
+  }
+
+  private fun isRemoteNewer(remote: String, current: String): Boolean {
+    if (remote.isBlank()) return false
+    if (current.isBlank()) return true
+
+    fun split(v: String): List<String> = v.split('.', '-', '_').filter { it.isNotBlank() }
+    val rParts = split(remote)
+    val cParts = split(current)
+    val max = maxOf(rParts.size, cParts.size)
+
+    for (i in 0 until max) {
+      val r = rParts.getOrNull(i).orEmpty()
+      val c = cParts.getOrNull(i).orEmpty()
+      val rNum = r.toIntOrNull()
+      val cNum = c.toIntOrNull()
+      if (rNum != null && cNum != null) {
+        if (rNum > cNum) return true
+        if (rNum < cNum) return false
+        continue
+      }
+      if (r > c) return true
+      if (r < c) return false
+    }
+    return false
   }
 
   companion object {

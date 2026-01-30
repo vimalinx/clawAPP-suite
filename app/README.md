@@ -21,7 +21,7 @@ Vimagram 是 Vimalinx Server 的官方 Android 客户端，提供用户注册、
 
 ### 方式一：下载 APK 安装（推荐）
 
-1. 从项目维护者获取最新的 APK 安装包
+1. 从 GitHub Releases 获取最新 APK 安装包：<https://github.com/vimalinx/vimalinx-suite-core/releases>
 2. 在 Android 设备上启用 **未知来源应用安装**：
    - Android 8.0+：设置 → 安全 → 允许来自未知来源的应用
 3. 下载并安装 APK 文件

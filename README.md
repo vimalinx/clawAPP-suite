@@ -2,11 +2,7 @@
 
 中文 | [English](README.en.md)
 
-<<<<<<< HEAD
 Vimalinx Suite Core 是 Clawdbot 的私人服务器解决方案，让机器人（Bots）和移动应用通过自托管服务器通信，无需依赖中心化平台。
-=======
-Vimalinx Suite 是 ClawdBot的国内服务器套件：
->>>>>>> cc7b4664e407161dfd93b3deaee6d4728689622c
 
 **核心组件：**
 - **Server**：自托管聊天服务器，提供用户管理、Token 认证、消息收发等功能
@@ -28,11 +24,7 @@ Vimalinx Suite 是 ClawdBot的国内服务器套件：
 ### 前置要求
 
 - 已安装 Node.js 22+
-<<<<<<< HEAD
 - 已安装并配置 `clawdbot` CLI（Gateway 工具）
-=======
-- 已安装 `clawdbot` 
->>>>>>> cc7b4664e407161dfd93b3deaee6d4728689622c
 - 一台 Android 手机（用于获取 Token）
 
 ### 安装步骤

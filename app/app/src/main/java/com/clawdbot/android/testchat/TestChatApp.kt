@@ -1,8 +1,12 @@
 package com.clawdbot.android.testchat
 
 import android.app.Activity
+import android.content.Intent
+import android.net.Uri
 import com.clawdbot.android.AppLocale
 import com.clawdbot.android.R
+import com.clawdbot.android.UpdateState
+import com.clawdbot.android.UpdateStatus
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -56,6 +60,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
@@ -66,6 +71,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -167,6 +173,8 @@ fun TestChatApp(viewModel: TestChatViewModel) {
                 onLogout = viewModel::logout,
                 languageTag = languageTag,
                 onLanguageChange = viewModel::setLanguageTag,
+                updateState = viewModel.updateState.collectAsState().value,
+                onCheckUpdates = viewModel::checkForUpdates,
               )
             }
             MainTab.Chat -> {
@@ -1038,6 +1046,8 @@ private fun AccountDashboardScreen(
   onLogout: () -> Unit,
   languageTag: String,
   onLanguageChange: (String) -> Unit,
+  updateState: UpdateState,
+  onCheckUpdates: () -> Unit,
 ) {
   val account = state.account
   val userLabel = account?.userId ?: stringResource(R.string.label_unknown_user)
@@ -1046,7 +1056,9 @@ private fun AccountDashboardScreen(
       ?: stringResource(R.string.label_unknown_server)
   val hosts = state.hosts
   val clipboard = LocalClipboardManager.current
+  val context = LocalContext.current
   var showLogoutConfirm by remember { mutableStateOf(false) }
+  var showSettingsSheet by remember { mutableStateOf(false) }
 
   Scaffold(
     topBar = {
@@ -1105,6 +1117,15 @@ private fun AccountDashboardScreen(
         )
       }
       item {
+        SectionHeader(text = stringResource(R.string.title_settings))
+        Button(
+          onClick = { showSettingsSheet = true },
+          modifier = Modifier.fillMaxWidth(),
+        ) {
+          Text(stringResource(R.string.action_open_settings))
+        }
+      }
+      item {
         Spacer(modifier = Modifier.height(4.dp))
         Button(
           onClick = { showLogoutConfirm = true },
@@ -1137,6 +1158,28 @@ private fun AccountDashboardScreen(
         }
       },
     )
+  }
+
+  if (showSettingsSheet) {
+    val sheetState = rememberModalBottomSheetState()
+    ModalBottomSheet(
+      onDismissRequest = { showSettingsSheet = false },
+      sheetState = sheetState,
+    ) {
+      Column(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+      ) {
+        SectionHeader(text = stringResource(R.string.title_updates))
+        UpdateSettingsSection(
+          updateState = updateState,
+          onCheckUpdates = onCheckUpdates,
+          onOpenRelease = { url ->
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+          },
+        )
+      }
+    }
   }
 }
 
@@ -1178,6 +1221,76 @@ private fun SectionHeader(text: String) {
     style = MaterialTheme.typography.titleMedium,
     fontWeight = FontWeight.SemiBold,
   )
+}
+
+@Composable
+private fun UpdateSettingsSection(
+  updateState: UpdateState,
+  onCheckUpdates: () -> Unit,
+  onOpenRelease: (String) -> Unit,
+) {
+  val statusText =
+    when (updateState.status) {
+      UpdateStatus.Idle -> stringResource(R.string.status_update_idle)
+      UpdateStatus.Checking -> stringResource(R.string.status_update_checking)
+      UpdateStatus.Ready ->
+        if (updateState.isUpdateAvailable) {
+          stringResource(R.string.status_update_available)
+        } else {
+          stringResource(R.string.status_update_uptodate)
+        }
+      UpdateStatus.Error -> updateState.error ?: stringResource(R.string.status_update_failed)
+    }
+  InfoCard(text = statusText)
+  val checking = updateState.status == UpdateStatus.Checking
+  Button(
+    onClick = onCheckUpdates,
+    enabled = !checking,
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Text(
+      if (checking) stringResource(R.string.action_check_updates_working)
+      else stringResource(R.string.action_check_updates),
+    )
+  }
+
+  if (updateState.status == UpdateStatus.Ready && updateState.isUpdateAvailable) {
+    val releaseTitle = updateState.latestName ?: updateState.latestTag ?: stringResource(R.string.label_update_release)
+    val notes = updateState.releaseNotes?.trim()?.take(1200).orEmpty()
+    val htmlUrl = updateState.htmlUrl.orEmpty()
+    Card(
+      colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+      modifier = Modifier.fillMaxWidth(),
+    ) {
+      Column(
+        modifier = Modifier.padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+      ) {
+        Text(text = releaseTitle, style = MaterialTheme.typography.titleSmall)
+        if (notes.isNotBlank()) {
+          Text(
+            text = notes,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 12,
+            overflow = TextOverflow.Ellipsis,
+          )
+        } else {
+          Text(
+            text = stringResource(R.string.info_update_release_notes),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
+        Button(
+          onClick = { if (htmlUrl.isNotBlank()) onOpenRelease(htmlUrl) },
+          enabled = htmlUrl.isNotBlank(),
+        ) {
+          Text(stringResource(R.string.action_view_release))
+        }
+      }
+    }
+  }
 }
 
 @Composable
