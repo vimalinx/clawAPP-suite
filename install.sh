@@ -40,7 +40,8 @@ else
   cp -a "${PLUGIN_DIR}/." "${TARGET_DIR}/"
 fi
 
-# Plugins are loaded from ~/.openclaw/extensions, so no install step needed.
+# Ensure OpenClaw discovers the plugin before config validation.
+openclaw plugins install "${TARGET_DIR}" >/dev/null
 openclaw plugins enable vimalinx >/dev/null 2>&1 || true
 
 if [[ -z "${SERVER_URL}" ]]; then
