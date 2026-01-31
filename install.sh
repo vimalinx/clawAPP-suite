@@ -3,15 +3,15 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_DIR="${REPO_DIR}/plugin"
-TARGET_DIR="${VIMALINX_PLUGIN_DIR:-$HOME/.clawdbot/extensions/vimalinx}"
-CONFIG_PATH="${CLAWDBOT_CONFIG:-$HOME/.clawdbot/clawdbot.json}"
+TARGET_DIR="${VIMALINX_PLUGIN_DIR:-$HOME/.openclaw/extensions/vimalinx}"
+CONFIG_PATH="${OPENCLAW_CONFIG:-${CLAWDBOT_CONFIG:-$HOME/.openclaw/openclaw.json}}"
 DEFAULT_SERVER_URL="http://123.60.21.129:8788"
 SERVER_URL="${VIMALINX_SERVER_URL:-}"
 TOKEN="${VIMALINX_TOKEN:-}"
 INBOUND_MODE="${VIMALINX_INBOUND_MODE:-poll}"
 
-if ! command -v clawdbot >/dev/null 2>&1; then
-  echo "clawdbot not found in PATH. Install the CLI first." >&2
+if ! command -v openclaw >/dev/null 2>&1; then
+  echo "openclaw not found in PATH. Install the CLI first." >&2
   exit 1
 fi
 if ! command -v curl >/dev/null 2>&1; then
@@ -25,7 +25,7 @@ fi
 
 echo "Installing Vimalinx Server plugin to: ${TARGET_DIR}"
 if [[ -d "${TARGET_DIR}" ]]; then
-if [[ "${TARGET_DIR}" == "${HOME}/.clawdbot/extensions/vimalinx" || "${VIMALINX_FORCE_OVERWRITE:-}" == "1" ]]; then
+  if [[ "${TARGET_DIR}" == "${HOME}/.openclaw/extensions/vimalinx" || "${TARGET_DIR}" == "${HOME}/.clawdbot/extensions/vimalinx" || "${VIMALINX_FORCE_OVERWRITE:-}" == "1" ]]; then
     rm -rf "${TARGET_DIR}"
   else
     echo "Target already exists: ${TARGET_DIR}" >&2
@@ -40,8 +40,8 @@ else
   cp -a "${PLUGIN_DIR}/." "${TARGET_DIR}/"
 fi
 
-# Plugins are loaded from ~/.clawdbot/extensions, so no install step needed.
-clawdbot plugins enable vimalinx >/dev/null 2>&1 || true
+# Plugins are loaded from ~/.openclaw/extensions, so no install step needed.
+openclaw plugins enable vimalinx >/dev/null 2>&1 || true
 
 if [[ -z "${SERVER_URL}" ]]; then
   read -r -p "Vimalinx Server URL [${DEFAULT_SERVER_URL}]: " SERVER_URL
@@ -151,17 +151,17 @@ print("Updated config:", config_path)
 PY
 
 if [[ "${VIMALINX_SKIP_DOCTOR_FIX:-}" != "1" ]]; then
-  clawdbot doctor --fix >/dev/null 2>&1 || true
+  openclaw doctor --fix >/dev/null 2>&1 || true
 fi
 
 if [[ "${VIMALINX_SKIP_GATEWAY_START:-}" != "1" ]]; then
-  clawdbot gateway stop >/dev/null 2>&1 || true
-  clawdbot gateway start >/dev/null 2>&1 || true
+  openclaw gateway stop >/dev/null 2>&1 || true
+  openclaw gateway start >/dev/null 2>&1 || true
 fi
 
 if [[ "${VIMALINX_SKIP_STATUS:-}" != "1" ]]; then
   sleep 2
-  clawdbot channels status --probe || true
+  openclaw channels status --probe || true
 fi
 
 cat <<'EOF'

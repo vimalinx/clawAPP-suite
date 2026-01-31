@@ -2,15 +2,15 @@
 
 中文 | [English](README.en.md)
 
-Vimalinx Suite Core 是 Clawdbot 的私人服务器解决方案，让机器人（Bots）和移动应用通过自托管服务器通信，无需依赖中心化平台。
+Vimalinx Suite Core 是 Openclaw 的私人服务器解决方案，让机器人（Bots）和移动应用通过自托管服务器通信，无需依赖中心化平台。
 
 **核心组件：**
 - **Server**：自托管聊天服务器，提供用户管理、Token 认证、消息收发等功能
-- **Plugin**：Gateway 插件，通过轮询（poll）或 webhook 将 Clawdbot 连接到你的 Vimalinx 服务器
+- **Plugin**：Gateway 插件，通过轮询（poll）或 webhook 将 Openclaw 连接到你的 Vimalinx 服务器
 - **Android App（Vimagram）**：移动端客户端，用于注册、生成 Token、聊天
 
 **适用场景：**
-- 为 Clawdbot 机器人部署私人聊天基础设施
+- 为 Openclaw 机器人部署私人聊天基础设施
 - 自托管消息服务，不依赖中心化平台
 - 通过移动端管理账号和 Token
 - 完全掌控你的通信数据
@@ -24,23 +24,23 @@ Vimalinx Suite Core 是 Clawdbot 的私人服务器解决方案，让机器人�
 ### 前置要求
 
 - 已安装 Node.js 22+
-- 已安装并配置 `clawdbot` CLI（Gateway 工具）
+- 已安装并配置 `openclaw` CLI（Gateway 工具）
 - 一台 Android 手机（用于获取 Token）
 
 ### 安装步骤
 
-#### 步骤 1：安装 clawdbot CLI
+#### 步骤 1：安装 openclaw CLI
 
 ```bash
-npm i -g clawdbot
+npm i -g openclaw
 ```
 
-#### 步骤 2：配置 clawdbot API
+#### 步骤 2：配置 openclaw API
 
 首次使用需要配置 API：
 
 ```bash
-clawdbot onboard
+openclaw onboard
 ```
 
 按照提示输入 API 配置信息。**注意**：在配置 channel 时，如果无需telegram等可以选择 **skip**（跳过），因为后续会通过 `./install.sh` 自动配置 Vimalinx channel。
@@ -72,26 +72,26 @@ cd vimalinx-suite-core
 
 脚本会自动执行以下操作：
 
-1. **检查依赖**：验证 `clawdbot`、`curl`、`python3` 是否已安装
-2. **复制插件**：将 `plugin` 目录复制到 `~/.clawdbot/extensions/vimalinx`
+1. **检查依赖**：验证 `openclaw`、`curl`、`python3` 是否已安装
+2. **复制插件**：将 `plugin` 目录复制到 `~/.openclaw/extensions/vimalinx`
 3. **配置服务器**：
    - 提示输入 **Vimalinx Server URL**（直接回车使用默认服务器 `http://123.60.21.129:8788`）
    - 提示输入 **Token**（粘贴从手机 App 复制的 Token）
 4. **登录验证**：使用 Token 登录服务器，获取 `userId` 和 `token`
-5. **写入配置**：自动更新 `~/.clawdbot/clawdbot.json`，配置 Vimalinx channel
+5. **写入配置**：自动更新 `~/.openclaw/openclaw.json`，配置 Vimalinx channel
 6. **自动步骤**（默认执行）：
-   - `clawdbot doctor --fix`：自动修复依赖问题
-   - `clawdbot gateway stop/start`：重启 Gateway
-   - `clawdbot channels status --probe`：检查连接状态
+- `openclaw doctor --fix`：自动修复依赖问题
+- `openclaw gateway stop/start`：重启 Gateway
+- `openclaw channels status --probe`：检查连接状态
 
 #### 步骤 6：验证安装
 
-安装脚本会自动运行 `clawdbot channels status --probe` 验证连接。如果看到状态显示绿色 **connected/polling**，说明安装成功。
+安装脚本会自动运行 `openclaw channels status --probe` 验证连接。如果看到状态显示绿色 **connected/polling**，说明安装成功。
 
 如果需要手动验证：
 
 ```bash
-clawdbot channels status --probe
+openclaw channels status --probe
 ```
 
 ### 高级选项
@@ -133,7 +133,7 @@ export VIMALINX_INBOUND_MODE="poll"
 
 ### 配置说明
 
-安装脚本会自动配置以下内容到 `~/.clawdbot/clawdbot.json`：
+安装脚本会自动配置以下内容到 `~/.openclaw/openclaw.json`：
 
 ```json
 {
@@ -249,12 +249,12 @@ node server/server.mjs
 
 ## ❓ 常见问题
 
-### Q1: 安装脚本提示 "clawdbot not found in PATH"
+### Q1: 安装脚本提示 "openclaw not found in PATH"
 
-**解决方法**：先安装 clawdbot CLI
+**解决方法**：先安装 openclaw CLI
 
 ```bash
-npm install -g clawdbot@latest
+npm install -g openclaw@latest
 ```
 
 ### Q2: Token 登录失败
@@ -278,9 +278,9 @@ curl -X POST <SERVER_URL>/api/login \
 ### Q3: Gateway 连接失败
 
 **检查步骤：**
-1. 确认 Gateway 已启动：`clawdbot gateway status`
-2. 检查 channel 配置：`clawdbot channels status --probe`
-3. 查看 Gateway 日志：`clawdbot gateway logs`
+1. 确认 Gateway 已启动：`openclaw gateway status`
+2. 检查 channel 配置：`openclaw channels status --probe`
+3. 查看 Gateway 日志：`openclaw gateway logs`
 
 ### Q4: 如何更换服务器？
 
@@ -292,7 +292,7 @@ curl -X POST <SERVER_URL>/api/login \
 
 **方法二：手动修改配置**
 
-编辑 `~/.clawdbot/clawdbot.json`，修改 `channels.vimalinx.baseUrl` 和 `channels.vimalinx.token`，然后重启 Gateway。
+编辑 `~/.openclaw/openclaw.json`，修改 `channels.vimalinx.baseUrl` 和 `channels.vimalinx.token`，然后重启 Gateway。
 
 ### Q5: 如何切换入站模式（poll/webhook）？
 

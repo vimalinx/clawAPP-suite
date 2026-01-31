@@ -2,15 +2,15 @@
 
 English | [中文](README.md)
 
-Vimalinx Suite Core is a private server solution for Clawdbot, enabling bots and mobile apps to communicate through self-hosted servers instead of centralized platforms.
+Vimalinx Suite Core is a private server solution for Openclaw, enabling bots and mobile apps to communicate through self-hosted servers instead of centralized platforms.
 
 **Core Components:**
 - **Server**: Self-hosted chat server with user management, token auth, and messaging
-- **Plugin**: Gateway plugin connecting Clawdbot to your Vimalinx server via poll or webhook
+- **Plugin**: Gateway plugin connecting Openclaw to your Vimalinx server via poll or webhook
 - **Android App (Vimagram)**: Mobile client for registration, token generation, and messaging
 
 **Use Cases:**
-- Deploy private chat infrastructure for Clawdbot bots
+- Deploy private chat infrastructure for Openclaw bots
 - Self-host messaging without relying on centralized platforms
 - Manage accounts and tokens via mobile app
 - Full control over your communication data
@@ -24,25 +24,25 @@ Vimalinx Suite Core is a private server solution for Clawdbot, enabling bots and
 ### Prerequisites
 
 - Node.js 22+ installed
-- `clawdbot` CLI installed and configured (Gateway tool)
+- `openclaw` CLI installed and configured (Gateway tool)
 - An Android phone (for getting tokens)
 
 ### Installation Steps
 
-#### Step 1: Install clawdbot CLI
+#### Step 1: Install openclaw CLI
 
 ```bash
-npm install -g clawdbot@latest
+npm install -g openclaw@latest
 ```
 
-**clawdbot** is the Gateway CLI tool for managing plugins, channels, and message routing.
+**openclaw** is the Gateway CLI tool for managing plugins, channels, and message routing.
 
-#### Step 2: Configure clawdbot API
+#### Step 2: Configure openclaw API
 
 First-time setup requires API configuration:
 
 ```bash
-clawdbot config
+openclaw config
 ```
 
 Follow the prompts to enter API configuration. **Important**: When configuring channels, select **skip** since the `./install.sh` script will automatically configure the Vimalinx channel.
@@ -74,26 +74,26 @@ Execute from project root:
 
 The script will automatically:
 
-1. **Check dependencies**: Verify `clawdbot`, `curl`, `python3` are installed
-2. **Copy plugin**: Copy `plugin` directory to `~/.clawdbot/extensions/vimalinx`
+1. **Check dependencies**: Verify `openclaw`, `curl`, `python3` are installed
+2. **Copy plugin**: Copy `plugin` directory to `~/.openclaw/extensions/vimalinx`
 3. **Configure server**:
    - Prompt for **Vimalinx Server URL** (press Enter for default server `http://123.60.21.129:8788`)
    - Prompt for **Token** (paste token copied from mobile app)
 4. **Login verification**: Use token to login to server and get `userId` and `token`
-5. **Write config**: Automatically update `~/.clawdbot/clawdbot.json` with Vimalinx channel config
+5. **Write config**: Automatically update `~/.openclaw/openclaw.json` with Vimalinx channel config
 6. **Auto steps** (default):
-   - `clawdbot doctor --fix`: Auto-fix dependency issues
-   - `clawdbot gateway stop/start`: Restart Gateway
-   - `clawdbot channels status --probe`: Check connection status
+   - `openclaw doctor --fix`: Auto-fix dependency issues
+   - `openclaw gateway stop/start`: Restart Gateway
+   - `openclaw channels status --probe`: Check connection status
 
 #### Step 6: Verify Installation
 
-The install script will automatically run `clawdbot channels status --probe` to verify the connection. If you see **connected/polling**, installation is successful.
+The install script will automatically run `openclaw channels status --probe` to verify the connection. If you see **connected/polling**, installation is successful.
 
 For manual verification:
 
 ```bash
-clawdbot channels status --probe
+openclaw channels status --probe
 ```
 
 ### Advanced Options
@@ -135,7 +135,7 @@ export VIMALINX_INBOUND_MODE="poll"
 
 ### Configuration Fields
 
-The install script automatically configures `~/.clawdbot/clawdbot.json`:
+The install script automatically configures `~/.openclaw/openclaw.json`:
 
 ```json
 {
@@ -251,12 +251,12 @@ node server/server.mjs
 
 ## ❓ FAQ
 
-### Q1: Install script says "clawdbot not found in PATH"
+### Q1: Install script says "openclaw not found in PATH"
 
-**Solution**: Install clawdbot CLI first
+**Solution**: Install openclaw CLI first
 
 ```bash
-npm install -g clawdbot@latest
+npm install -g openclaw@latest
 ```
 
 ### Q2: Token login fails
@@ -280,9 +280,9 @@ curl -X POST <SERVER_URL>/api/login \
 ### Q3: Gateway connection fails
 
 **Troubleshooting steps:**
-1. Confirm Gateway is running: `clawdbot gateway status`
-2. Check channel configuration: `clawdbot channels status --probe`
-3. View Gateway logs: `clawdbot gateway logs`
+1. Confirm Gateway is running: `openclaw gateway status`
+2. Check channel configuration: `openclaw channels status --probe`
+3. View Gateway logs: `openclaw gateway logs`
 
 ### Q4: How to switch servers?
 
@@ -296,7 +296,7 @@ export VIMALINX_TOKEN="new-token"
 
 **Method 2: Manual config edit**
 
-Edit `~/.clawdbot/clawdbot.json`, modify `channels.vimalinx.baseUrl` and `channels.vimalinx.token`, then restart Gateway.
+Edit `~/.openclaw/openclaw.json`, modify `channels.vimalinx.baseUrl` and `channels.vimalinx.token`, then restart Gateway.
 
 ### Q5: How to switch inbound mode (poll/webhook)?
 
