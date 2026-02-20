@@ -2,16 +2,16 @@
   "name": "vimalinx",
   "version": "2026.1.24",
   "type": "module",
-  "description": "Vimalinx Server channel plugin for Openclaw",
+  "description": "VimaClawNet Server channel plugin for Openclaw",
   "openclaw": {
     "extensions": [
       "./index.ts"
     ],
     "channel": {
       "id": "vimalinx",
-      "label": "Vimalinx Server",
-      "selectionLabel": "Vimalinx Server (local server)",
-      "detailLabel": "Vimalinx Server",
+      "label": "VimaClawNet Server",
+      "selectionLabel": "VimaClawNet Server (local server)",
+      "detailLabel": "VimaClawNet Server",
       "docsPath": "/channels",
       "docsLabel": "channels",
       "blurb": "custom webhook + outbound API",

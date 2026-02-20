@@ -141,7 +141,7 @@ if [[ ! -f "${USERS_FILE}" ]]; then
   cp "${INSTALL_DIR}/server/users.example.json" "${USERS_FILE}"
 fi
 
-cat >/etc/vimalinx-server.env <<EOF
+cat >/etc/vima-clawnet-server.env <<EOF
 TEST_SERVER_PORT=${PORT}
 TEST_USERS_FILE=${USERS_FILE}
 TEST_USERS_WRITE_FILE=${USERS_FILE}
@@ -153,14 +153,14 @@ TEST_HMAC_SECRET=${HMAC_SECRET}
 TEST_REQUIRE_SIGNATURE=${REQUIRE_SIGNATURE}
 EOF
 
-cat >/etc/systemd/system/vimalinx-server.service <<EOF
+cat >/etc/systemd/system/vima-clawnet-server.service <<EOF
 [Unit]
-Description=Vimalinx Server
+Description=VimaClawNet Server
 After=network.target
 
 [Service]
 Type=simple
-EnvironmentFile=/etc/vimalinx-server.env
+EnvironmentFile=/etc/vima-clawnet-server.env
 WorkingDirectory=${INSTALL_DIR}
 ExecStart=/usr/bin/node ${INSTALL_DIR}/server/server.mjs
 Restart=always
@@ -171,7 +171,7 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable --now vimalinx-server
-systemctl status --no-pager vimalinx-server
+systemctl enable --now vima-clawnet-server
+systemctl status --no-pager vima-clawnet-server
 
 echo "Done. Server URL: http://<your-server-ip>:${PORT}"

@@ -9,13 +9,13 @@ Usage:
   bash scripts/deploy-openclaw-node.sh --server-url <url> [options]
 
 Options:
-  --server-url <url>             Vimalinx server URL (required)
+  --server-url <url>             VimaClawNet server URL (required)
   --repo-url <url>               Git repository URL
   --repo-dir <path>              Local repository directory
   --target-user <user>           User for OpenClaw config (~/.openclaw)
-  --user-id <id>                 Vimalinx user id
-  --password <pwd>               Vimalinx account password
-  --token <token>                Existing Vimalinx host token
+  --user-id <id>                 VimaClawNet user id
+  --password <pwd>               VimaClawNet account password
+  --token <token>                Existing VimaClawNet host token
   --display-name <name>          Register display name
   --invite-code <code>           Invite code for registration
   --server-token <token>         Server token for restricted registration
@@ -227,7 +227,7 @@ fi
 
 if [[ -z "${TOKEN}" ]]; then
   if [[ -z "${PASSWORD}" && -t 0 ]]; then
-    read -r -s -p "Vimalinx password: " PASSWORD
+    read -r -s -p "VimaClawNet password: " PASSWORD
     echo
   fi
   if [[ -z "${PASSWORD}" ]]; then

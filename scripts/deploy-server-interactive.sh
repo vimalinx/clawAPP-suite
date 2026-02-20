@@ -94,7 +94,7 @@ DEFAULT_SERVICE_NAME="${VIMALINX_SERVICE_NAME:-vimalinx-server}"
 DEFAULT_ALLOW_REGISTRATION="${VIMALINX_ALLOW_REGISTRATION:-true}"
 
 echo
-echo "== Vimalinx Server Interactive Installer =="
+echo "== VimaClawNet Server Interactive Installer =="
 echo
 
 REPO_URL="$(ask_with_default "Repository URL" "${DEFAULT_REPO_URL}")"

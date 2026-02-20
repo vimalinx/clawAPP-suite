@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-One-click deploy for Vimalinx Server + OpenClaw plugin.
+One-click deploy for VimaClawNet Server + OpenClaw plugin.
 
 Run as root:
   sudo bash scripts/deploy-server-oneclick.sh
@@ -23,8 +23,8 @@ Options:
   --server-token <token>           Protect /send with global token
   --hmac-secret <secret>           Enable request signing secret
   --require-signature <bool>       Force signature validation
-  --service-name <name>            Systemd service name (default: vimalinx-server)
-  --env-file <path>                Environment file path (default: /etc/vimalinx-server.env)
+  --service-name <name>            Systemd service name (default: vima-clawnet-server)
+  --env-file <path>                Environment file path (default: /etc/vima-clawnet-server.env)
 
 OpenClaw integration options:
   --with-openclaw                  Enable OpenClaw integration on this machine
@@ -135,7 +135,7 @@ SERVER_TOKEN="${VIMALINX_SERVER_TOKEN:-}"
 HMAC_SECRET="${VIMALINX_HMAC_SECRET:-}"
 REQUIRE_SIGNATURE="${VIMALINX_REQUIRE_SIGNATURE:-}"
 SERVICE_NAME="${VIMALINX_SERVICE_NAME:-vimalinx-server}"
-ENV_FILE="${VIMALINX_ENV_FILE:-/etc/vimalinx-server.env}"
+ENV_FILE="${VIMALINX_ENV_FILE:-/etc/vima-clawnet-server.env}"
 
 TARGET_USER="${VIMALINX_TARGET_USER:-}"
 OPENCLAW_BASE_URL="${VIMALINX_OPENCLAW_BASE_URL:-}"
@@ -264,7 +264,7 @@ SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 
 cat >"${SERVICE_FILE}" <<EOF
 [Unit]
-Description=Vimalinx Server
+Description=VimaClawNet Server
 After=network.target
 
 [Service]

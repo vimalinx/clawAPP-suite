@@ -8,8 +8,8 @@ import { setTestRuntime } from "./src/runtime.js";
 
 const plugin = {
   id: "vimalinx",
-  name: "Vimalinx Server",
-  description: "Vimalinx Server channel plugin",
+  name: "VimaClawNet Server",
+  description: "VimaClawNet Server channel plugin",
   configSchema: emptyPluginConfigSchema(),
   register(api: ClawdbotPluginApi) {
     setTestRuntime(api.runtime);
