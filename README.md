@@ -225,9 +225,15 @@ cd app
 第一步，在云主机上（仅部署 Server）：
 
 ```bash
-git clone https://github.com/vimalinx/vimalinx-suite-core
-cd vimalinx-suite-core
+git clone https://github.com/vimalinx/ClawNet.git
+cd ClawNet
 sudo bash scripts/deploy-server-oneclick.sh
+```
+
+如果你希望交互式填写参数，改用：
+
+```bash
+sudo bash scripts/deploy-server-interactive.sh
 ```
 
 该脚本会自动完成（服务器侧）：
@@ -239,9 +245,15 @@ sudo bash scripts/deploy-server-oneclick.sh
 第二步，在本地 OpenClaw 机器上（安装插件并接入服务器）：
 
 ```bash
-git clone https://github.com/vimalinx/vimalinx-suite-core
-cd vimalinx-suite-core
+git clone https://github.com/vimalinx/ClawNet.git
+cd ClawNet
 bash scripts/deploy-openclaw-node.sh --server-url http://49.235.88.239:8788 --token <机器贡献者token>
+```
+
+如果你希望交互式填写参数，改用：
+
+```bash
+bash scripts/deploy-openclaw-node-interactive.sh
 ```
 
 机器贡献者 token 由服务器 GUI 生成：

@@ -37,9 +37,15 @@ Vimalinx Server 是一个轻量级的聊天服务器，为 Gateway 插件提供�
 在云主机上执行：
 
 ```bash
-git clone https://github.com/vimalinx/vimalinx-suite-core
-cd vimalinx-suite-core
+git clone https://github.com/vimalinx/ClawNet.git
+cd ClawNet
 sudo bash scripts/deploy-server-oneclick.sh
+```
+
+如果你希望交互式填写参数，改用：
+
+```bash
+sudo bash scripts/deploy-server-interactive.sh
 ```
 
 脚本会自动：
@@ -50,9 +56,15 @@ sudo bash scripts/deploy-server-oneclick.sh
 然后在本地 OpenClaw 机器上执行插件安装：
 
 ```bash
-git clone https://github.com/vimalinx/vimalinx-suite-core
-cd vimalinx-suite-core
+git clone https://github.com/vimalinx/ClawNet.git
+cd ClawNet
 bash scripts/deploy-openclaw-node.sh --server-url http://49.235.88.239:8788 --token <机器贡献者token>
+```
+
+如果你希望交互式填写参数，改用：
+
+```bash
+bash scripts/deploy-openclaw-node-interactive.sh
 ```
 
 部署后可在机器池控制台查看在线节点并配置模式路由：
