@@ -1,8 +1,8 @@
-# Vimalinx Server
+# VimaClawNet Server
 
 中文 | [English](README.en.md)
 
-Vimalinx Server 是一个轻量级的聊天服务器，为 Gateway 插件提供消息通道服务（channel id: `vimalinx`）。
+VimaClawNet Server 是一个轻量级的聊天服务器，为 Gateway 插件提供消息通道服务（channel id: `vimalinx`）。
 
 ---
 
@@ -51,7 +51,7 @@ sudo bash scripts/deploy-server-interactive.sh
 脚本会自动：
 
 - 安装依赖（Node.js 22+、git、python3）
-- 部署并启动 systemd 服务 `vimalinx-server`
+- 部署并启动 systemd 服务 `vima-clawnet-server`
 
 然后在本地 OpenClaw 机器上执行插件安装：
 
@@ -565,7 +565,7 @@ pm2 save
 
 ```ini
 [Unit]
-Description=Vimalinx Server
+Description=VimaClawNet Server
 After=network.target
 
 [Service]

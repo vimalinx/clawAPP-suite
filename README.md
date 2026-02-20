@@ -1,13 +1,13 @@
-# Vimalinx Suite
+# VimaClawNet Suite
 
 中文 | [English](README.en.md)
 
-Vimalinx Suite Core 是 Openclaw 的私人服务器解决方案，让机器人（Bots）和移动应用通过自托管服务器通信，无需依赖中心化平台。
+VimaClawNet Suite Core 是 Openclaw 的私人服务器解决方案，让机器人（Bots）和移动应用通过自托管服务器通信，无需依赖中心化平台。
 
 **核心组件：**
 - **Server**：自托管聊天服务器，提供用户管理、Token 认证、消息收发等功能
-- **Plugin**：Gateway 插件，通过轮询（poll）或 webhook 将 Openclaw 连接到你的 Vimalinx 服务器
-- **Android App（Vimagram）**：移动端客户端，用于注册、生成 Token、聊天
+- **Plugin**：Gateway 插件，通过轮询（poll）或 webhook 将 Openclaw 连接到你的 VimaClawNet 服务器
+- **Android App（VimaClawNet）**：移动端客户端，用于注册、生成 Token、聊天
 
 **适用场景：**
 - 为 Openclaw 机器人部署私人聊天基础设施
@@ -43,7 +43,7 @@ npm i -g openclaw
 openclaw onboard
 ```
 
-按照提示输入 API 配置信息。**注意**：在配置 channel 时，如果无需telegram等可以选择 **skip**（跳过），因为后续会通过 `./install.sh` 自动配置 Vimalinx channel。
+按照提示输入 API 配置信息。**注意**：在配置 channel 时，如果无需telegram等可以选择 **skip**（跳过），因为后续会通过 `./install.sh` 自动配置 VimaClawNet channel。
 
 #### 步骤 3：克隆仓库
 
@@ -54,8 +54,8 @@ cd ClawNet
 
 #### 步骤 4：在手机上注册并获取 Token
 
-1. 安装 Vimagram App（见下方"Android App 安装"）
-2. 启动 Vimagram，默认是`http://49.235.88.239:18788`，如果有第三方服务器点击“添加服务器”
+1. 安装 VimaClawNet App（见下方"Android App 安装"）
+2. 启动 VimaClawNet，默认是`http://49.235.88.239:18788`，如果有第三方服务器点击“添加服务器”
 3. 点击 **注册**，填写用户信息
 4. 注册成功后，在 **Account** 页面生成 **主机 Token**
 5. 复制生成的 Token
@@ -75,10 +75,10 @@ cd ClawNet
 1. **检查依赖**：验证 `openclaw`、`curl`、`python3` 是否已安装
 2. **复制插件**：将 `plugin` 目录复制到 `~/.openclaw/extensions/vimalinx`
 3. **配置服务器**：
-   - 提示输入 **Vimalinx Server URL**（直接回车使用默认服务器 `http://49.235.88.239:18788`）
+- 提示输入 **VimaClawNet Server URL**（直接回车使用默认服务器 `http://49.235.88.239:18788`）
    - 提示输入 **Token**（粘贴从手机 App 复制的 Token）
 4. **登录验证**：使用 Token 登录服务器，获取 `userId` 和 `token`
-5. **写入配置**：自动更新 `~/.openclaw/openclaw.json`，配置 Vimalinx channel
+5. **写入配置**：自动更新 `~/.openclaw/openclaw.json`，配置 VimaClawNet channel
 6. **自动步骤**（默认执行）：
 - `openclaw doctor --fix`：自动修复依赖问题
 - `openclaw gateway stop/start`：重启 Gateway
@@ -162,7 +162,7 @@ export VIMALINX_INBOUND_MODE="poll"
 
 | 字段 | 说明 | 默认值 |
 |------|------|--------|
-| `baseUrl` | Vimalinx Server 地址 | - |
+| `baseUrl` | VimaClawNet Server 地址 | - |
 | `userId` | 用户 ID（从服务器获取） | - |
 | `token` | 认证 Token（从服务器获取） | - |
 | `inboundMode` | 入站模式：`poll`（轮询）或 `webhook`（推送） | `poll` |
@@ -173,7 +173,7 @@ export VIMALINX_INBOUND_MODE="poll"
 
 ---
 
-## 📲 Android App（Vimagram）
+## 📲 Android App（VimaClawNet）
 
 ### 安装 App
 
@@ -190,7 +190,7 @@ cd app
 
 ### 使用 App
 
-1. **启动 App**：打开 Vimagram
+1. **启动 App**：打开 VimaClawNet
 2. **配置服务器**：
    - 输入服务器地址（例如：`http://49.235.88.239:18788`）
    - ~~ 如果使用 HTTPS，请确保服务器证书有效 ~~ 暂未支持
@@ -210,7 +210,7 @@ cd app
 
 ### 特性
 
-- 直接连接 Vimalinx Server（无需魔法）
+- 直接连接 VimaClawNet Server（无需魔法）
 - 账号页展示已连接主机 Token，方便恢复
 - 支持语言切换（系统/中文/English）
 
@@ -218,7 +218,7 @@ cd app
 
 ## 🚀 Server 部署（高级用户）
 
-如果需要自部署 Vimalinx Server，请参考 `server/README.md`。
+如果需要自部署 VimaClawNet Server，请参考 `server/README.md`。
 
 ### 一键部署（推荐）
 
@@ -326,7 +326,7 @@ npm install -g openclaw@latest
 - 网络连接问题
 
 **解决方法：**
-1. 在 Vimagram App 中重新生成 Token
+1. 在 VimaClawNet App 中重新生成 Token
 2. 检查服务器地址是否正确（确保包含端口号）
 3. 使用 `curl` 测试服务器连接：
 
