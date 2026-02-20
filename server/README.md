@@ -32,6 +32,46 @@ Vimalinx Server 是一个轻量级的聊天服务器，为 Gateway 插件提供�
 
 ## 🚀 快速启动
 
+### 一键部署（仅服务器，推荐）
+
+在云主机上执行：
+
+```bash
+git clone https://github.com/vimalinx/vimalinx-suite-core
+cd vimalinx-suite-core
+sudo bash scripts/deploy-server-oneclick.sh
+```
+
+脚本会自动：
+
+- 安装依赖（Node.js 22+、git、python3）
+- 部署并启动 systemd 服务 `vimalinx-server`
+
+然后在本地 OpenClaw 机器上执行插件安装：
+
+```bash
+git clone https://github.com/vimalinx/vimalinx-suite-core
+cd vimalinx-suite-core
+bash scripts/deploy-openclaw-node.sh --server-url http://49.235.88.239:8788 --token <机器贡献者token>
+```
+
+部署后可在机器池控制台查看在线节点并配置模式路由：
+
+```text
+http://49.235.88.239:8788/admin
+```
+
+在控制台点击“机器贡献者注册（无密码）”会自动创建贡献者账号并返回 token。
+
+如果你确实需要在服务器机也做 OpenClaw 集成（可选）：
+
+```bash
+sudo VIMALINX_MODE_ACCOUNT_MAP="quick=default,code=code,deep=deep" bash scripts/deploy-server-oneclick.sh \
+  --with-openclaw \
+  --openclaw-user-id <你的userId> \
+  --openclaw-token <你的token>
+```
+
 ### 本地开发模式（Poll 模式）
 
 ```bash
@@ -64,6 +104,7 @@ node server/server.mjs
 | `TEST_INBOUND_MODE` | string | `poll` | 入站模式：`poll` 或 `webhook` |
 | `TEST_USERS_FILE` | string | - | 用户数据文件路径 |
 | `TEST_USERS_WRITE_FILE` | string | 同 `TEST_USERS_FILE` | 注册时写入的用户文件路径 |
+| `TEST_MACHINES_FILE` | string | `<users目录>/machines.json` | 机器池持久化文件路径 |
 | `TEST_USERS` | JSON | - | 内联用户数据（JSON 字符串） |
 | `TEST_DEFAULT_USER_ID` | string | - | 默认用户 ID |
 | `TEST_DEFAULT_USER_TOKEN` | string | - | 默认用户 Token |
@@ -301,6 +342,16 @@ export TEST_SIGNATURE_TTL_MS=600000  # 10 分钟
 - `POST /api/login` - Token 登录（获取用户信息）
 - `POST /api/token` - 生成主机 Token
 - `POST /api/token/usage` - Token 使用统计
+
+### 机器池（插件自动注册）
+
+- `POST /api/machine/register` - 插件启动时自动注册机器
+- `POST /api/machine/heartbeat` - 插件心跳上报（在线状态与配置刷新）
+- `GET /api/machine/config` - 插件拉取当前机器配置
+- `POST /api/machines/contributors` - 管理员创建机器贡献者并签发 token
+- `GET /api/machines` - 查看机器池（管理员 token 看全量；用户 token + userId 看自己）
+- `GET /api/machines/:machineId` - 查看单台机器详情
+- `PATCH /api/machines/:machineId` - 修改机器路由/模式配置（管理员或机器所属用户）
 
 ### SSE 流
 

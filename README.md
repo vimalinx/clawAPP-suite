@@ -220,6 +220,53 @@ cd app
 
 如果需要自部署 Vimalinx Server，请参考 `server/README.md`。
 
+### 一键部署（推荐）
+
+第一步，在云主机上（仅部署 Server）：
+
+```bash
+git clone https://github.com/vimalinx/vimalinx-suite-core
+cd vimalinx-suite-core
+sudo bash scripts/deploy-server-oneclick.sh
+```
+
+该脚本会自动完成（服务器侧）：
+
+1. 安装依赖（Node.js 22+、git、python3 等）
+2. 部署并启动 `vimalinx-server` systemd 服务
+3. 生成/更新服务环境文件并持久化用户数据
+
+第二步，在本地 OpenClaw 机器上（安装插件并接入服务器）：
+
+```bash
+git clone https://github.com/vimalinx/vimalinx-suite-core
+cd vimalinx-suite-core
+bash scripts/deploy-openclaw-node.sh --server-url http://49.235.88.239:8788 --token <机器贡献者token>
+```
+
+机器贡献者 token 由服务器 GUI 生成：
+
+```text
+http://49.235.88.239:8788/admin
+```
+
+在 GUI 点击“机器贡献者注册（无密码）”即可生成 token 和一键命令。
+
+机器池图形管理页：
+
+```text
+http://49.235.88.239:8788/admin
+```
+
+如果你确实希望在服务器机器上也执行 OpenClaw 集成（不推荐默认），可显式启用：
+
+```bash
+sudo bash scripts/deploy-server-oneclick.sh --with-openclaw \
+  --openclaw-user-id <你的userId> \
+  --openclaw-token <你的token> \
+  --mode-account-map quick=default,code=code,deep=deep
+```
+
 ### 快速启动（本地测试）
 
 ```bash
