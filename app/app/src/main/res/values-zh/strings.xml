@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Vimagram</string>
+    <string name="app_name">VimaClawNet</string>
     <string name="account_created_title">账号已创建</string>
     <string name="account_created_body">请保存此用户 ID 以便下次登录：%1$s</string>
     <string name="account_welcome">注册或登录</string>
@@ -136,15 +136,15 @@
     <string name="error_send_failed_code">发送失败：%1$d</string>
     <string name="error_connection_failed">连接失败</string>
     <string name="error_host_connection_failed">%1$s：%2$s</string>
-    <string name="notification_channel_messages">Vimagram 消息</string>
-    <string name="notification_channel_messages_desc">来自 Vimagram 的消息</string>
-    <string name="notification_channel_status">Vimagram</string>
-    <string name="notification_channel_status_desc">保持 Vimagram 在后台运行</string>
+    <string name="notification_channel_messages">VimaClawNet 消息</string>
+    <string name="notification_channel_messages_desc">来自 VimaClawNet 的消息</string>
+    <string name="notification_channel_status">VimaClawNet</string>
+    <string name="notification_channel_status_desc">保持 VimaClawNet 在后台运行</string>
     <string name="status_hosts_count">%1$d 台主机</string>
     <string name="status_no_hosts">无主机</string>
     <string name="status_user">用户 %1$s</string>
     <string name="status_no_user">无用户</string>
-    <string name="notification_running_title">Vimagram 运行中</string>
+    <string name="notification_running_title">VimaClawNet 运行中</string>
     <string name="action_stop">停止</string>
     <string name="title_host_tokens">已连接主机 Token</string>
     <string name="label_token_value">Token：%1$s</string>

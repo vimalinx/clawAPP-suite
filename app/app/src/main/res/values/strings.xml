@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Vimagram</string>
+    <string name="app_name">VimaClawNet</string>
     <string name="account_created_title">Account created</string>
     <string name="account_created_body">Save this user ID for future logins: %1$s</string>
     <string name="account_welcome">Register or sign in</string>
@@ -136,15 +136,15 @@
     <string name="error_send_failed_code">Send failed: %1$d</string>
     <string name="error_connection_failed">Connection failed</string>
     <string name="error_host_connection_failed">%1$s: %2$s</string>
-    <string name="notification_channel_messages">Vimagram messages</string>
-    <string name="notification_channel_messages_desc">Messages from Vimagram</string>
-    <string name="notification_channel_status">Vimagram</string>
-    <string name="notification_channel_status_desc">Keeps Vimagram active in the background</string>
+    <string name="notification_channel_messages">VimaClawNet messages</string>
+    <string name="notification_channel_messages_desc">Messages from VimaClawNet</string>
+    <string name="notification_channel_status">VimaClawNet</string>
+    <string name="notification_channel_status_desc">Keeps VimaClawNet active in the background</string>
     <string name="status_hosts_count">%1$d hosts</string>
     <string name="status_no_hosts">no hosts</string>
     <string name="status_user">user %1$s</string>
     <string name="status_no_user">no user</string>
-    <string name="notification_running_title">Vimagram running</string>
+    <string name="notification_running_title">VimaClawNet running</string>
     <string name="action_stop">Stop</string>
     <string name="title_host_tokens">Connected host tokens</string>
     <string name="label_token_value">Token: %1$s</string>
