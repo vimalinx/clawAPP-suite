@@ -483,7 +483,7 @@ class TestChatViewModel(app: Application) : AndroidViewModel(app) {
     viewModelScope.launch {
       val req =
         Request.Builder()
-          .url("https://api.github.com/repos/vimalinx/vimalinx-suite-core/releases/latest")
+          .url("https://api.github.com/repos/vimalinx/ClawNet/releases/latest")
           .header("User-Agent", buildUserAgent())
           .build()
 

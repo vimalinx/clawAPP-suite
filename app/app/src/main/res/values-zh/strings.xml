@@ -20,6 +20,7 @@
     <string name="action_add_host">添加主机</string>
     <string name="action_new_chat">新建对话</string>
     <string name="info_no_hosts">还没有主机。生成一个主机 Token 来连接 Clawdbot。</string>
+    <string name="info_login_required_to_chat">现在可先进入界面浏览，登录后即可与 AI 对话。</string>
     <string name="label_search_sessions">搜索会话</string>
     <string name="action_hide_archived">隐藏已归档（%1$d）</string>
     <string name="action_show_archived">显示已归档（%1$d）</string>

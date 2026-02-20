@@ -20,6 +20,7 @@
     <string name="action_add_host">Add host</string>
     <string name="action_new_chat">New chat</string>
     <string name="info_no_hosts">No hosts yet. Generate a host token to connect Clawdbot.</string>
+    <string name="info_login_required_to_chat">You can browse the app now. Log in to start chatting with AI.</string>
     <string name="label_search_sessions">Search sessions</string>
     <string name="action_hide_archived">Hide archived (%1$d)</string>
     <string name="action_show_archived">Show archived (%1$d)</string>

@@ -34,6 +34,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -138,32 +139,7 @@ fun TestChatApp(viewModel: TestChatViewModel) {
     }
   }
   TestChatTheme {
-    if (!state.isAuthenticated) {
-      AccountScreen(
-        errorText = state.errorText,
-        deviceId = state.deviceId,
-        selectedModeId = state.selectedModeId,
-        modeOptions = state.modeOptions,
-        inviteRequired = state.inviteRequired,
-        serverTestMessage = state.serverTestMessage,
-        serverTestSuccess = state.serverTestSuccess,
-        serverTestInProgress = state.serverTestInProgress,
-        initialUserId = state.account?.userId,
-        initialServerUrl = state.account?.serverUrl,
-        serverConfig = serverConfig,
-        onSelectMode = viewModel::selectMode,
-        onQuickStart = viewModel::quickStartWithTestAccount,
-        onRegister = { serverUrl, userId, inviteCode, password ->
-          viewModel.registerAccount(serverUrl, userId, inviteCode, password) { registeredId ->
-            registrationUserId = registeredId
-          }
-        },
-        onLogin = viewModel::loginAccount,
-        onTestServer = viewModel::testServerConnection,
-        onClearServerTest = viewModel::clearServerTestStatus,
-        onFetchServerConfig = viewModel::refreshServerConfig,
-      )
-    } else if (state.activeChatId != null) {
+    if (state.activeChatId != null) {
       ChatScreen(
         state = state,
         onBack = viewModel::backToList,
@@ -182,18 +158,46 @@ fun TestChatApp(viewModel: TestChatViewModel) {
         Box(modifier = Modifier.padding(padding)) {
           when (currentTab) {
             MainTab.Account -> {
-              AccountDashboardScreen(
-                state = state,
-                onLogout = viewModel::logout,
-                languageTag = languageTag,
-                onLanguageChange = viewModel::setLanguageTag,
-                updateState = viewModel.updateState.collectAsState().value,
-                onCheckUpdates = viewModel::checkForUpdates,
-              )
+              if (state.isAuthenticated) {
+                AccountDashboardScreen(
+                  state = state,
+                  onLogout = viewModel::logout,
+                  languageTag = languageTag,
+                  onLanguageChange = viewModel::setLanguageTag,
+                  updateState = viewModel.updateState.collectAsState().value,
+                  onCheckUpdates = viewModel::checkForUpdates,
+                )
+              } else {
+                AccountScreen(
+                  errorText = state.errorText,
+                  deviceId = state.deviceId,
+                  selectedModeId = state.selectedModeId,
+                  modeOptions = state.modeOptions,
+                  inviteRequired = state.inviteRequired,
+                  serverTestMessage = state.serverTestMessage,
+                  serverTestSuccess = state.serverTestSuccess,
+                  serverTestInProgress = state.serverTestInProgress,
+                  initialUserId = state.account?.userId,
+                  initialServerUrl = state.account?.serverUrl,
+                  serverConfig = serverConfig,
+                  onSelectMode = viewModel::selectMode,
+                  onQuickStart = viewModel::quickStartWithTestAccount,
+                  onRegister = { serverUrl, userId, inviteCode, password ->
+                    viewModel.registerAccount(serverUrl, userId, inviteCode, password) { registeredId ->
+                      registrationUserId = registeredId
+                    }
+                  },
+                  onLogin = viewModel::loginAccount,
+                  onTestServer = viewModel::testServerConnection,
+                  onClearServerTest = viewModel::clearServerTestStatus,
+                  onFetchServerConfig = viewModel::refreshServerConfig,
+                )
+              }
             }
             MainTab.Chat -> {
               ChatListScreen(
                 state = state,
+                isAuthenticated = state.isAuthenticated,
                 onOpenChat = viewModel::openChat,
                 onNewChat = viewModel::createThreadAndOpen,
                 onGenerateHost = viewModel::generateHostToken,
@@ -203,6 +207,7 @@ fun TestChatApp(viewModel: TestChatViewModel) {
                 onDeleteThread = viewModel::deleteThread,
                 onRestoreThread = viewModel::restoreThread,
                 onPurgeThread = viewModel::purgeThread,
+                onRequireLogin = { currentTab = MainTab.Account },
                 selectedModeId = state.selectedModeId,
                 modeOptions = state.modeOptions,
                 onSelectMode = viewModel::selectMode,
@@ -286,34 +291,30 @@ private fun AccountScreen(
       ServerOption(label = vimalinxServerLabel, url = DEFAULT_SERVER_URL),
     )
   }
-  val startingServer = initialServerUrl?.trim().orEmpty()
-  var selectedServer by rememberSaveable {
-    mutableStateOf(if (startingServer.isNotBlank()) startingServer else DEFAULT_SERVER_URL)
-  }
+  val fixedServerUrl = DEFAULT_SERVER_URL
+  var selectedServer by rememberSaveable { mutableStateOf(DEFAULT_SERVER_URL) }
   var isLogin by rememberSaveable { mutableStateOf(false) }
   var inviteCode by rememberSaveable { mutableStateOf("") }
   var registerPassword by rememberSaveable { mutableStateOf("") }
   var registerUserId by rememberSaveable { mutableStateOf(initialUserId ?: "") }
   var loginUserId by rememberSaveable { mutableStateOf(initialUserId ?: "") }
   var loginPassword by rememberSaveable { mutableStateOf("") }
-  var showAddServer by remember { mutableStateOf(false) }
-  var newServerName by rememberSaveable { mutableStateOf("") }
-  var newServerUrl by rememberSaveable { mutableStateOf("") }
-  val defaultServerLabel = stringResource(R.string.default_custom_server_label)
   val unknownServerLabel = stringResource(R.string.label_unknown_server)
   val normalizedSelectedServer = normalizeServerUrl(selectedServer)
   val configMatchesServer = serverConfig.serverUrl == normalizedSelectedServer
   val inviteRequirement = if (configMatchesServer) serverConfig.inviteRequired else inviteRequired
   LaunchedEffect(selectedServer) {
     onClearServerTest()
-    onFetchServerConfig(selectedServer)
+    onFetchServerConfig(fixedServerUrl)
     if (selectedServer.isNotBlank() && serverOptions.none { it.url == selectedServer }) {
+      serverOptions.clear()
       serverOptions.add(
         ServerOption(
-          label = formatServerLabel(selectedServer, unknownServerLabel),
-          url = selectedServer,
+          label = formatServerLabel(fixedServerUrl, unknownServerLabel),
+          url = fixedServerUrl,
         ),
       )
+      selectedServer = fixedServerUrl
     }
   }
 
@@ -341,7 +342,7 @@ private fun AccountScreen(
         .statusBarsPadding(),
   ) {
     Column(
-      modifier = Modifier.fillMaxWidth().padding(24.dp),
+      modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp),
       verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
       Spacer(modifier = Modifier.height(12.dp))
@@ -371,18 +372,11 @@ private fun AccountScreen(
           InfoCard(text = stringResource(R.string.info_quick_start_device, deviceId))
           ServerPicker(
             servers = serverOptions,
-            selectedUrl = selectedServer,
-            onSelected = { selectedServer = it },
-            onAddServer = { showAddServer = true },
-            onRemoveServer = { url ->
-              if (serverOptions.size <= 1) {
-                return@ServerPicker
-              }
-              serverOptions.removeAll { it.url == url }
-              if (selectedServer == url) {
-                selectedServer = serverOptions.firstOrNull()?.url ?: ""
-              }
-            }
+            selectedUrl = fixedServerUrl,
+            onSelected = { selectedServer = fixedServerUrl },
+            onAddServer = {},
+            onRemoveServer = {},
+            allowServerManagement = false,
           )
           if (!serverTestMessage.isNullOrBlank()) {
             if (serverTestSuccess == true) {
@@ -399,7 +393,7 @@ private fun AccountScreen(
           )
           ModeHintCard(mode = TestChatModeCatalog.resolveMode(selectedModeId))
           OutlinedButton(
-            onClick = { onTestServer(selectedServer) },
+            onClick = { onTestServer(fixedServerUrl) },
             enabled = selectedServer.isNotBlank() && !serverTestInProgress,
             modifier = Modifier.fillMaxWidth(),
           ) {
@@ -412,7 +406,7 @@ private fun AccountScreen(
             )
           }
           Button(
-            onClick = { onQuickStart(selectedServer) },
+            onClick = { onQuickStart(fixedServerUrl) },
             enabled = selectedServer.isNotBlank(),
             modifier = Modifier.fillMaxWidth(),
           ) {
@@ -443,7 +437,7 @@ private fun AccountScreen(
               colors = textFieldColors(),
             )
             Button(
-              onClick = { onLogin(selectedServer, loginUserId, loginPassword) },
+              onClick = { onLogin(fixedServerUrl, loginUserId, loginPassword) },
               modifier = Modifier.fillMaxWidth(),
               enabled = loginUserId.isNotBlank() && loginPassword.isNotBlank(),
             ) {
@@ -484,7 +478,7 @@ private fun AccountScreen(
               colors = textFieldColors(),
             )
             Button(
-              onClick = { onRegister(selectedServer, registerUserId, inviteCode, registerPassword) },
+              onClick = { onRegister(fixedServerUrl, registerUserId, inviteCode, registerPassword) },
               modifier = Modifier.fillMaxWidth(),
               enabled =
                 registerUserId.isNotBlank() &&
@@ -499,60 +493,13 @@ private fun AccountScreen(
     }
   }
 
-  if (showAddServer) {
-    AlertDialog(
-      onDismissRequest = { showAddServer = false },
-      title = { Text(stringResource(R.string.title_add_server)) },
-      text = {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          TextField(
-            value = newServerName,
-            onValueChange = { newServerName = it },
-            label = { Text(stringResource(R.string.label_server_name)) },
-            singleLine = true,
-            colors = textFieldColors(),
-          )
-          TextField(
-            value = newServerUrl,
-            onValueChange = { newServerUrl = it },
-            label = { Text(stringResource(R.string.label_server_url)) },
-            placeholder = { Text(stringResource(R.string.placeholder_server_url)) },
-            singleLine = true,
-            colors = textFieldColors(),
-          )
-        }
-      },
-      confirmButton = {
-        TextButton(
-          onClick = {
-            val label = newServerName.trim().ifBlank { defaultServerLabel }
-            val url = normalizeServerUrl(newServerUrl)
-            if (serverOptions.none { it.url == url }) {
-              serverOptions.add(ServerOption(label = label, url = url))
-            }
-            selectedServer = url
-            newServerName = ""
-            newServerUrl = ""
-            showAddServer = false
-          },
-          enabled = newServerUrl.isNotBlank(),
-        ) {
-          Text(stringResource(R.string.action_add))
-        }
-      },
-      dismissButton = {
-        TextButton(onClick = { showAddServer = false }) {
-          Text(stringResource(R.string.action_cancel))
-        }
-      },
-    )
-  }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ChatListScreen(
   state: TestChatUiState,
+  isAuthenticated: Boolean,
   onOpenChat: (String) -> Unit,
   onNewChat: (String, String, String) -> Unit,
   onGenerateHost: (String, (String, String) -> Unit) -> Unit,
@@ -562,6 +509,7 @@ private fun ChatListScreen(
   onDeleteThread: (String) -> Unit,
   onRestoreThread: (String) -> Unit,
   onPurgeThread: (String) -> Unit,
+  onRequireLogin: () -> Unit,
   selectedModeId: String,
   modeOptions: List<TestChatModeOption>,
   onSelectMode: (String) -> Unit,
@@ -638,7 +586,15 @@ private fun ChatListScreen(
       ) {
         ErrorCard(text = state.errorText ?: "")
       }
-      if (state.hosts.isEmpty()) {
+      if (!isAuthenticated) {
+        InfoCard(text = stringResource(R.string.info_login_required_to_chat))
+        Button(
+          onClick = onRequireLogin,
+          modifier = Modifier.fillMaxWidth(),
+        ) {
+          Text(stringResource(R.string.action_login))
+        }
+      } else if (state.hosts.isEmpty()) {
         InfoCard(text = stringResource(R.string.info_no_hosts))
       } else {
           HostListRow(hosts = state.hosts, sessionUsage = state.sessionUsage)
@@ -1380,7 +1336,7 @@ private fun LinksSection(
   onOpenLink: (String) -> Unit,
 ) {
   val xhsUrl = "https://xhslink.com/m/487YEE3Jygk"
-  val siteUrl = "https://vimalinx.xyz"
+  val siteUrl = "https://github.com/vimalinx/ClawNet"
   Card(
     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     modifier = Modifier.fillMaxWidth(),
@@ -1644,6 +1600,7 @@ private fun ServerPicker(
   onSelected: (String) -> Unit,
   onAddServer: () -> Unit,
   onRemoveServer: (String) -> Unit,
+  allowServerManagement: Boolean = true,
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     Row(
@@ -1656,8 +1613,10 @@ private fun ServerPicker(
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
-      TextButton(onClick = onAddServer) {
-        Text(stringResource(R.string.action_add_server))
+      if (allowServerManagement) {
+        TextButton(onClick = onAddServer) {
+          Text(stringResource(R.string.action_add_server))
+        }
       }
     }
     Row(
@@ -1669,12 +1628,14 @@ private fun ServerPicker(
         if (isSelected) {
           Button(onClick = { onSelected(server.url) }) {
             Text(server.label)
-            Spacer(modifier = Modifier.width(8.dp))
-            Icon(
-              imageVector = Icons.Default.Delete,
-              contentDescription = "Remove",
-              modifier = Modifier.size(16.dp).clickable { onRemoveServer(server.url) },
-            )
+            if (allowServerManagement) {
+              Spacer(modifier = Modifier.width(8.dp))
+              Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = "Remove",
+                modifier = Modifier.size(16.dp).clickable { onRemoveServer(server.url) },
+              )
+            }
           }
         } else {
           OutlinedButton(onClick = { onSelected(server.url) }) {
